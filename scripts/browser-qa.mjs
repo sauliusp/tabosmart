@@ -329,7 +329,54 @@ try {
       (a) => a.name === "tabosmart.maintenance" && a.periodInMinutes === 15,
     ),
   );
-  // Simulate an open workspace outliving its worker's volatile revisions.
+  // Keep controls disabled when a pending settings write outlives a rerender.
+  await page.evaluate(() => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    window.qaSettingsSend = send;
+    let pending = true;
+    const gate = new Promise((resolve) => {
+      window.qaReleaseSetting = resolve;
+    });
+    chrome.runtime.sendMessage = async (message, ...args) => {
+      if (pending && message.type === "settings") {
+        pending = false;
+        await gate;
+      }
+      return send(message, ...args);
+    };
+  });
+  await page.locator("#inactivity-days").selectOption("14");
+  await page.waitForFunction(
+    () =>
+      document.querySelector("#inactivity-days").disabled &&
+      document.querySelector("#group-name-language").disabled,
+  );
+  await page.locator('[data-view="feedback"]').first().click();
+  await page.locator('[data-view="settings"]').first().click();
+  check(
+    "Settings selects remain disabled through a rerender while another write is pending",
+    (await page.locator("#inactivity-days").isDisabled()) &&
+      (await page.locator("#group-name-language").isDisabled()),
+  );
+  await page.evaluate(() => window.qaReleaseSetting());
+  await page.waitForFunction(
+    () =>
+      !document.querySelector("#inactivity-days").disabled &&
+      !document.querySelector("#group-name-language").disabled,
+  );
+  await page.locator("#group-name-language").selectOption("en");
+  await page.waitForFunction(
+    () => !document.querySelector("#group-name-language").disabled,
+  );
+  const preferences = await rpc("snapshot");
+  check(
+    "Settings can be changed normally after the pending write completes",
+    preferences.settings.inactivityDays === 14 &&
+      preferences.settings.groupNameLanguage === "en",
+  );
+  await page.evaluate(() => {
+    chrome.runtime.sendMessage = window.qaSettingsSend;
+  });
   // Each opt-out commits in a newer worker generation with a lower revision.
   await page.evaluate(async () => {
     const send = chrome.runtime.sendMessage.bind(chrome.runtime);

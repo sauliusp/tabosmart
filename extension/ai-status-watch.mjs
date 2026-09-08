@@ -121,6 +121,7 @@ export function createAIStatusWatcher({
   function stop() {
     stopped = true;
     epoch++;
+    fingerprint = null;
     clearPendingTimer();
   }
   return { refresh, stop };

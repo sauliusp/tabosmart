@@ -20,7 +20,7 @@
 
 The Store screenshots and video show the actual interface with example browsing data. They intentionally precede the favicon update. The fifth screenshot and video ending invite useful feedback at https://tabosmart.featurebase.app/.
 
-Local verification on 8 September 2026: 349 unit tests passed; extension checks and packaging passed; isolated Chromium integration, favicon, installation-guide and accessibility checks passed; website production build and type checks passed. Optional real model inference and Chrome Web Store publication remain separate checks. Browser QA reports can be regenerated under `qa/`; personal browser records and the narration reference are not part of this public source tree.
+Local verification on 8 September 2026: 352 unit tests passed; extension checks and packaging passed; isolated Chromium integration, favicon, installation-guide and accessibility checks passed; website production build and type checks passed. Optional real model inference and Chrome Web Store publication remain separate checks. Browser QA reports can be regenerated under `qa/`; personal browser records and the narration reference are not part of this public source tree.
 
 Public video: https://youtu.be/pftCdoldqAw.
 

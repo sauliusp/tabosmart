@@ -240,11 +240,29 @@ export function createBackend(
       await persist();
       notify();
       const tabs = await api.tabs.query({ windowType: "normal" });
+      let focusedTabId = null;
+      try {
+        const focused = await api.windows.getLastFocused({
+          windowTypes: ["normal"],
+        });
+        if (focused.focused && !focused.incognito && focused.type === "normal")
+          focusedTabId =
+            tabs.find((tab) => tab.windowId === focused.id && tab.active)?.id ??
+            null;
+      } catch {
+        // Failure to read focus cannot establish new use of any selected tab.
+      }
       nativeGroups = await readNativeGroups();
       historyFacts = state.settings.historyEnabled
         ? await history.facts(tabs.filter(isWebTab).map((tab) => tab.url))
         : {};
-      observeTabs(state, tabs, now(), activatedId ?? state.pendingActivationId);
+      observeTabs(
+        state,
+        tabs,
+        now(),
+        activatedId ?? state.pendingActivationId,
+        focusedTabId,
+      );
       state.pendingActivationId = null;
       state.evaluation = {
         state: "idle",

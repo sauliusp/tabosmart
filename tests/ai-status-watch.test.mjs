@@ -174,6 +174,24 @@ test("unchanged waiting status does not repeatedly rerender but continues checki
   assert.equal(f.timers.size, 0);
 });
 
+test("a restarted watcher re-delivers the same ready state after the UI reset", async () => {
+  const f = fixture(async () => status("ready"));
+  await f.watcher.refresh();
+  f.watcher.stop();
+  await f.watcher.refresh();
+  assert.deepEqual(
+    f.changes.map((value) => value.names.state),
+    ["ready", "ready"],
+  );
+  await f.watcher.refresh();
+  assert.equal(
+    f.changes.length,
+    2,
+    "Unchanged results are still deduplicated within the new epoch",
+  );
+  assert.equal(f.timers.size, 0);
+});
+
 test("check failures are safe and do not enter an endless retry loop", async () => {
   const f = fixture(async () => {
     throw new Error("private browser detail");

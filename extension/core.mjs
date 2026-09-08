@@ -424,6 +424,7 @@ export function observeTabs(
   rawTabs,
   now = Date.now(),
   activatedId = null,
+  focusedTabId = null,
 ) {
   if (!state.settings.enabled) return [];
   reconcileGroupingContext(state.groupingContext, rawTabs, now);
@@ -472,10 +473,13 @@ export function observeTabs(
       now,
       record.visitCount,
     );
-    if (tab.active || tab.id === activatedId) {
+    // active is only selection within a window. The caller separately supplies
+    // the selected tab in Chrome's actually focused window.
+    if (tab.id === focusedTabId || tab.id === activatedId) {
+      const firstUse = record.lastUsedAt === null;
       record.lastUsedAt = now;
       state.urlHistory[tab.url].lastUsedAt = now;
-      if (fresh || tab.id === activatedId) {
+      if (fresh || firstUse || tab.id === activatedId) {
         record.visitCount += 1;
         state.urlHistory[tab.url].visitCount += 1;
       }

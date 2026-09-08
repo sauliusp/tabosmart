@@ -485,6 +485,30 @@ test("latest activation of any duplicate resets URL review age for every copy", 
   assert.equal(current[1].lastUsedAt, null);
 });
 
+test("selected tabs in background windows do not refresh their URL inactivity on repeated scans", () => {
+  const s = state();
+  const tabs = [
+    tab(1, "https://focused.test/", { active: true, windowId: 1 }),
+    tab(2, "https://background.test/", { active: true, windowId: 2 }),
+    tab(3, "https://background.test/", { windowId: 1 }),
+  ];
+  observeTabs(s, tabs, T, null, 1);
+  const later = observeTabs(s, tabs, T + 9 * DAY, null, 1);
+  assert.equal(later.find((t) => t.id === 1).inactivityDays, 0);
+  assert.equal(later.find((t) => t.id === 1).visitCount, 1);
+  assert(later.filter((t) => t.id !== 1).every((t) => t.inactivityDays === 9));
+  assert(
+    later.filter((t) => t.id !== 1).every((t) => t.urlLastUsedAt === null),
+  );
+  const focused = observeTabs(s, tabs, T + 10 * DAY, null, 2);
+  assert(
+    focused.filter((t) => t.id !== 1).every((t) => t.inactivityDays === 0),
+  );
+  assert.equal(focused.find((t) => t.id === 2).visitCount, 1);
+  const unfocused = observeTabs(s, tabs, T + 12 * DAY);
+  assert.equal(unfocused.find((t) => t.id === 2).inactivityDays, 2);
+});
+
 test("URL ledger survives closed tabs but expires after 90 days and has a hard cap", () => {
   const s = state();
   observeTabs(s, [tab(1)], T);

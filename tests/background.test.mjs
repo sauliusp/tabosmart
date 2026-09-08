@@ -2703,3 +2703,40 @@ test("an uncertain post-close lookup never counts a retained tab as closed and r
     );
   }
 });
+
+test("maintenance records only Chrome's actually focused selected tab", async () => {
+  const f = fixture([
+    tab(1, { active: true }),
+    tab(2, { active: true, windowId: 2 }),
+  ]);
+  let focus = { id: 1, type: "normal", focused: true, incognito: false };
+  f.api.windows.getLastFocused = async () => copy(focus);
+  const b = await enabled(f);
+  const before = await b.handle({ type: "snapshot" });
+  f.setTime(T + 9 * DAY);
+  const later = await b.handle({ type: "snapshot" });
+  assert.equal(later.tabs.find((t) => t.id === 1).urlLastUsedAt, T + 9 * DAY);
+  assert.equal(later.tabs.find((t) => t.id === 2).urlLastUsedAt, null);
+  assert.equal(later.tabs.find((t) => t.id === 2).inactivityDays, 9);
+  assert.equal(
+    later.tabs.find((t) => t.id === 1).visitCount,
+    before.tabs.find((t) => t.id === 1).visitCount,
+  );
+  focus = { ...focus, id: 2 };
+  f.setTime(T + 10 * DAY);
+  await b.handle({ type: "snapshot" });
+  focus.focused = false;
+  f.setTime(T + 11 * DAY);
+  const away = await b.handle({ type: "snapshot" });
+  assert.equal(away.tabs.find((t) => t.id === 2).urlLastUsedAt, T + 10 * DAY);
+  f.api.windows.getLastFocused = async () => {
+    throw new Error("Focus unavailable");
+  };
+  f.setTime(T + 12 * DAY);
+  const unavailable = await b.handle({ type: "snapshot" });
+  assert.equal(unavailable.ok, true);
+  assert.equal(
+    unavailable.tabs.find((t) => t.id === 2).urlLastUsedAt,
+    T + 10 * DAY,
+  );
+});
