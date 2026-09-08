@@ -37,8 +37,8 @@ https://tabosmart.featurebase.app/
 
 The most useful feedback says what you tried, what you expected and what happened. No browsing data is attached automatically. Keep private URLs and sensitive details out of public posts. Honest feedback of every kind is welcome.
 
-Website: https://tabosmart.sauliusdev.chatgpt.site/
-Privacy: https://tabosmart.sauliusdev.chatgpt.site/privacy/
+Website: https://tabosm.art/
+Privacy: https://tabosm.art/privacy/
 Private concerns: saulius.developer@gmail.com
 
 ## Category and language

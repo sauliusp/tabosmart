@@ -14,7 +14,7 @@ Less Tab Clutter. More Headspace. | Tabosmart for Chrome
 You didn't open all those tabs for no reason. Tabosmart helps you bring related work together, review repeat pages and save links for later. You approve every action.
 
 Help shape Tabosmart: https://tabosmart.featurebase.app/
-Explore the extension: https://tabosmart.sauliusdev.chatgpt.site/
+Explore the extension: https://tabosm.art/
 
 I'm building this with the people using it. Tell me what you were trying to do, what missed the point, or what would make it useful tomorrow. Ideas, problems and specific examples are welcome. Please keep private browsing details out of public posts.
 

@@ -24,4 +24,4 @@ Local verification on 8 September 2026: 336 unit tests passed; extension checks 
 
 Public video: https://youtu.be/pftCdoldqAw.
 
-Live website: https://tabosmart.sauliusdev.chatgpt.site/. Custom-domain purchase and Store submission are pending external dashboard access.
+Live website: https://tabosm.art/. The custom domain is registered and its HTTPS routing is active. Chrome Web Store submission remains pending the clean PR review and merge.

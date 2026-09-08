@@ -2,7 +2,7 @@
 
 **Less tab clutter. More headspace.** Tabosmart brings related work together, helps you review repeat pages, and saves links for later. You review every action before tabs are grouped or closed.
 
-[Website](https://tabosmart.sauliusdev.chatgpt.site/) · [Video](https://youtu.be/pftCdoldqAw) · [Share an idea or problem](https://tabosmart.featurebase.app/) · [Privacy](docs/PRIVACY.md)
+[Website](https://tabosm.art/) · [Video](https://youtu.be/pftCdoldqAw) · [Share an idea or problem](https://tabosmart.featurebase.app/) · [Privacy](docs/PRIVACY.md)
 
 ## Try the extension
 
