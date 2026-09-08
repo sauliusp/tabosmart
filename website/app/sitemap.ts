@@ -1,0 +1,1 @@
+import guides from '../content/guides.json';export default function sitemap(){return ['','/privacy/',...guides.map(g=>'/guides/'+g.slug+'/')].map(p=>({url:'https://tabosmart.sauliusdev.chatgpt.site'+p,lastModified:new Date('2026-09-08T00:00:00Z')}))}

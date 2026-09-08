@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Tabosmart</title>
+  <rect x="16" y="16" width="96" height="96" rx="27" fill="#164E40"/>
+  <path d="M40 37h44a8 8 0 0 1 8 8v7H36v-7a8 8 0 0 1 4-8Z" fill="#DEEF94"/>
+  <path d="M36 57h56v7a8 8 0 0 1-8 8H73v13a10 10 0 0 1-10 10h-8V72H44a8 8 0 0 1-8-8Z" fill="#FAF8F1"/>
+</svg>

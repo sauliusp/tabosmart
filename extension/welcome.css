@@ -1,0 +1,45 @@
+:root { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; color:#183c35; background:#faf8f1; font-synthesis:none; }
+* { box-sizing:border-box; }
+body { margin:0; }
+a { color:inherit; text-underline-offset:4px; }
+a:focus-visible, summary:focus-visible { outline:3px solid #b45b30; outline-offset:5px; }
+.skip-link { position:absolute; top:-60px; left:20px; padding:12px; background:white; z-index:2; }
+.skip-link:focus { top:12px; }
+.intro-header, main, .intro-footer { width:min(1080px,calc(100% - 64px)); margin:auto; }
+.intro-header { display:flex; align-items:center; justify-content:space-between; padding:28px 0; }
+.brand { display:flex; gap:9px; align-items:center; font-size:24px; font-weight:750; text-decoration:none; letter-spacing:-1px; }
+.brand span { margin-left:-9px; }
+.intro-badge { font-size:11px; font-weight:700; letter-spacing:1.5px; }
+.eyebrow { font-size:11px; font-weight:750; letter-spacing:1.6px; line-height:1.7; margin:0 0 17px; }
+.intro-hero { padding:46px 48px 38px; background:#deef94; border-radius:24px; }
+h1 { font-size:clamp(38px,5.5vw,64px); line-height:1.06; letter-spacing:-2.5px; margin:0 0 22px; }
+h1 span { color:#126b5b; }
+.intro-lead { max-width:665px; font-size:20px; line-height:1.55; margin:0 0 24px; }
+.intro-actions { display:flex; flex-wrap:wrap; align-items:center; gap:24px; }
+.button { display:inline-flex; align-items:center; justify-content:center; gap:22px; min-height:48px; padding:13px 22px; border-radius:10px; font-size:15px; font-weight:700; text-decoration:none; }
+.primary { background:#126b5b; color:white; }
+.primary:hover { background:#0d594b; }
+.text-link { font-size:15px; font-weight:650; }
+.intro-assurance { font-size:13px; margin:20px 0 0; }
+.intro-benefits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:32px; padding:38px 0; }
+.intro-number { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#deef94; border-radius:10px; font-size:13px; font-weight:750; }
+.peach { background:#f6e4c9; }.pale { background:#edf1dc; }
+h2 { font-size:25px; line-height:1.2; letter-spacing:-.65px; margin:14px 0; }
+h3 { font-size:18px; margin:0 0 10px; }
+p { font-size:16px; line-height:1.65; margin:0 0 14px; }
+.intro-benefits p { color:#4e6459; font-size:15px; }
+.intro-start { display:grid; grid-template-columns:1.5fr 1fr; gap:46px; padding:32px; border:1px solid #dcdfd1; border-radius:18px; background:white; }
+.intro-start aside { padding:25px; background:#f6e4c9; border-radius:12px; align-self:center; }
+.intro-start .eyebrow { margin-bottom:8px; }.intro-start h2 { margin-top:0; }
+.intro-details { display:grid; grid-template-columns:1fr 1fr; gap:48px; padding:46px 0 28px; }
+.intro-details .eyebrow { margin-bottom:10px; }.intro-details h2 { margin-top:0; }
+.intro-details p { color:#4e6459; font-size:15px; }
+details { border-top:1px solid #dcdfd1; padding-top:15px; } summary { cursor:pointer; font-size:14px; font-weight:650; } details p { padding-top:12px; }
+.intro-caution { border-left:4px solid #c98546; padding:20px 24px; background:#f6eddd; border-radius:0 12px 12px 0; }.intro-caution p { margin:8px 0 0; font-size:14px; }
+.intro-feedback { margin-top:38px; padding:36px; border-radius:18px; background:#edf1dc; display:grid; grid-template-columns:1fr 180px; gap:40px; align-items:center; }
+.intro-feedback h2 { font-size:32px; margin-top:0; }.intro-feedback .intro-fine { font-size:12px; line-height:1.6; margin:16px 0 0; max-width:630px; }
+.intro-qr { text-align:center; text-decoration:none; font-size:12px; line-height:1.5; }.intro-qr img { display:block; margin:0 auto 10px; border-radius:10px; }
+.intro-finish { display:flex; justify-content:space-between; align-items:center; padding:34px 0; gap:20px; }.intro-finish p { margin:0; font-weight:650; }
+.intro-footer { border-top:1px solid #dcdfd1; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; padding:22px 0 30px; font-size:12px; }.intro-footer nav { display:flex; flex-wrap:wrap; gap:20px; }
+@media(max-width:700px) { .intro-header,main,.intro-footer { width:calc(100% - 32px); }.intro-header { padding:20px 0; }.intro-badge { font-size:9px; }.brand { font-size:22px; }.intro-hero { padding:32px 24px; border-radius:18px; }h1 { letter-spacing:-1.6px; }.intro-lead { font-size:17px; }.intro-benefits,.intro-start,.intro-details,.intro-feedback { grid-template-columns:1fr; gap:24px; }.intro-benefits { padding:28px 8px; }.intro-benefits article { padding-bottom:12px; }.intro-start { padding:24px; }.intro-details { padding:32px 8px; gap:32px; }.intro-feedback { padding:26px; }.intro-feedback h2 { font-size:28px; }.intro-qr { justify-self:start; text-align:left; }.intro-qr img { margin-left:0; }.intro-finish { align-items:flex-start; flex-direction:column; }.intro-footer { line-height:1.7; } }
+@media(prefers-reduced-motion:no-preference) { .button { transition:background .15s ease; } }

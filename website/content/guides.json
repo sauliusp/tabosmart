@@ -1,0 +1,126 @@
+[
+  {
+    "slug": "organize-chrome-tabs",
+    "title": "How to organize Chrome tabs without losing your place",
+    "description": "A practical way to group related work, review repeat pages and save the links you are not using right now.",
+    "answer": "Start with one task. Group the tabs that belong to it, review repeat URLs, then save links you want to revisit. Check for unsaved work before closing any tab.",
+    "sections": [
+      [
+        "Start with the work, not the number of tabs",
+        "A browser with forty useful tabs may be easier to work in than one with ten unrelated loose ends. Before clearing anything, decide what you are doing now. A project, a purchase or a piece of research usually makes a more useful group name than a vague label such as Miscellaneous."
+      ],
+      [
+        "Use Chrome groups for work that is still active",
+        "Chrome has native tab groups. You can select related tabs and add them to a group from the tab context menu. A short, recognizable name helps you return to the right context. Tabosmart can propose related groups from tab metadata and local usage signals. Open Review group, inspect the reason and included pages, edit the name if needed, then confirm. A suggestion is a starting point for your judgment."
+      ],
+      [
+        "Review repetitions before closing them",
+        "Repeated URLs are a useful place to look for clutter, but identical addresses do not prove identical page state. One copy might contain an unfinished form or a different scroll position. Tabosmart shows repeat copies for review and lets you select which ones to close. Check the contents yourself before confirming."
+      ],
+      [
+        "Give later its own place",
+        "If you want a link but do not need the page open, save its URL for later. Tabosmart’s shelf is local to the extension and separate from Chrome bookmarks. Saving does not itself close the original tabs. You can decide whether to close selected tabs afterward. This makes the decision smaller: you are choosing when to revisit something."
+      ],
+      [
+        "Keep the limits visible",
+        "Tabosmart leaves pinned, audio-playing and protected tabs out of suggestions. It can use available browsing-history frequency and recency to order comparable suggestions locally. These signals do not prove importance or that a page is safe to close. You can pause observation, switch off history insights or erase extension data in Settings & privacy."
+      ],
+      [
+        "Try a small reset",
+        "Start with one suggested group or a handful of repeat copies. If the reason does not match your work, dismiss it. Then tell us what relationship you expected. A concrete example, with private information removed, is more useful than a request to “make the AI smarter.”"
+      ]
+    ]
+  },
+  {
+    "slug": "remove-duplicate-tabs",
+    "title": "How to remove duplicate Chrome tabs safely",
+    "description": "Review repeated URLs without assuming their contents are identical. Keep control over which Chrome tabs close.",
+    "answer": "Review repeated URLs, check each page for unsaved work and select the copies you want to close. A duplicate address is a clue, not proof that closing the tab is safe.",
+    "sections": [
+      [
+        "Why the same URL can still matter twice",
+        "Two tabs can share an address while containing different form inputs, login states or work in progress. Tabosmart checks repeated full URLs. It does not read the page contents, so it cannot tell you whether unsaved work differs between copies."
+      ],
+      [
+        "A review you can actually trust",
+        "Open a repeat-page suggestion and inspect the tabs it lists. Visit any page whose state you need to check, choose the copies to close and confirm the action. Tabosmart revalidates selected tabs before applying a change, so a suggestion cannot silently act on an old assumption after tabs have changed."
+      ],
+      [
+        "Some tabs deserve to stay put",
+        "Pinned, audio-playing and explicitly protected tabs are excluded from suggestions while those safeguards apply. If a page is important to keep open, protection gives you an explicit way to communicate that choice. The extension is designed to suggest a manageable review, not chase the smallest possible tab count."
+      ],
+      [
+        "What Recovery gives you",
+        "For supported tab-closing actions, Tabosmart keeps recoverable URLs locally. Reopening a URL loads that website again. It cannot recreate unsaved forms, text, exact page state or authentication. Review those things before closing a tab. Recovery is useful reassurance, but it is not a backup of the page."
+      ],
+      [
+        "Help improve duplicate review",
+        "If a suggestion is confusing, report the sequence that led to it, your Chrome version and what you expected. Use made-up or redacted addresses rather than sharing personal browsing details. If a page should have been protected, explain the visible state that made it important."
+      ]
+    ]
+  },
+  {
+    "slug": "save-tabs-for-later",
+    "title": "Save Chrome tabs for later without keeping everything open",
+    "description": "Choose between an open tab group, Chrome bookmarks and Tabosmart’s local shelf. Understand what saving a URL preserves.",
+    "answer": "Keep active work in tab groups, use bookmarks for links you want in Chrome’s bookmark system, and use Tabosmart’s local shelf for URLs you want to revisit from the extension. Saving a URL does not preserve unsaved page content.",
+    "sections": [
+      [
+        "Open does not have to mean important",
+        "An open tab can be a reminder, a half-finished decision or a page you are afraid you will forget. Closing it may feel like abandoning the intention. Saving its URL gives that intention another place to live, so you can decide what deserves screen space today."
+      ],
+      [
+        "Save first, decide about closing second",
+        "In Tabosmart, open the tab review, select the links and save them for later. Saving leaves the original pages open. If you then choose to close selected tabs, check their contents first and confirm. Separating these choices makes it easier to keep a link without prematurely discarding the page’s current state."
+      ],
+      [
+        "A shelf, a bookmark or a tab group?",
+        "A tab group keeps related pages together in Chrome while you work. A Chrome bookmark belongs to the browser’s bookmark system. Tabosmart’s Saved for later shelf stores URLs inside this extension’s local profile storage. It does not read or write your Chrome bookmarks and does not sync its shelf between devices. Pick the place that matches how you plan to return."
+      ],
+      [
+        "Return when the link is useful",
+        "Open Saved for later to revisit a saved batch or selected URL. A reopened website loads normally under that website’s own behavior and privacy practices. The saved URL is a route back to the site, not an offline archive or a copy of every detail that was on screen."
+      ],
+      [
+        "Understand the local-storage boundary",
+        "The shelf and Recovery are each bounded to 100 batches and 1,000 URLs. A full collection refuses the corresponding new operation rather than silently replacing recovery records. Erasing Tabosmart data or uninstalling removes its local records. Keep independent copies of anything you cannot afford to lose."
+      ],
+      [
+        "Tell us about your next return",
+        "If finding something on the shelf feels harder than it should, describe how you expected to look for it: by task, date, name or another clue. These real retrieval habits can guide improvements more usefully than adding organization controls without a clear purpose."
+      ]
+    ]
+  },
+  {
+    "slug": "local-ai-tab-organizer",
+    "title": "How Tabosmart’s local AI helps organize Chrome tabs",
+    "description": "What optional on-device AI does, what stays local, why a model download may be needed and how tab suggestions work without AI.",
+    "answer": "On supported Chrome devices, Tabosmart uses optional on-device AI to suggest additional tab relationships, group names and equivalent explanation wording. Model input stays on the device. Core tab suggestions work without AI, and you approve every action.",
+    "sections": [
+      [
+        "Useful before the model is ready",
+        "Tabosmart first creates suggestions and explanations using local rules. It uses open-tab titles and URLs, activity, opening context, confirmed grouping choices and available browsing-history aggregates. AI can then add inferred relationships or better names. It never needs to be ready for the initial suggestions to appear."
+      ],
+      [
+        "What the model receives",
+        "Naming and discovery use bounded current-tab titles, domains and selected local context. They do not send page bodies, form values, complete URL paths or queries, browser-history titles or full visit lists to the model. AI proposals have constraints and still require review. A plausible name is not proof that a group is right."
+      ],
+      [
+        "On-device processing has a specific meaning",
+        "Chrome’s Prompt API runs its model locally. Tabosmart has no cloud inference fallback and does not upload browsing records to the developer. Chrome may need to download and prepare its model first; normal browser updates and model downloads still involve network activity. A feedback post is separate and contains only what you choose to share."
+      ],
+      [
+        "Why availability varies",
+        "The extension works in desktop Chrome from version 120; Chrome documents Prompt API availability for extensions from version 138, subject to device, model and language requirements. The interface shows checking, downloading, preparing, ready or unavailable states. An enabled preference is not proof that the model is ready. Read Chrome’s current requirements for your device."
+      ],
+      [
+        "You stay in control",
+        "Optional AI is enabled by default for fresh workspaces, but model setup starts from an explicit user action when a download is required. Existing off choices stay off. You can switch assistance off in Settings & privacy. AI cannot approve grouping, saving or closing actions. An unavailable model or failed request leaves core suggestions usable."
+      ],
+      [
+        "Useful feedback about AI",
+        "Tell us the proposed relationship, why it missed your intention and whether the issue was setup, naming or grouping. Remove private page titles and URLs before posting. The most useful report explains the task you were trying to keep together."
+      ]
+    ]
+  }
+]

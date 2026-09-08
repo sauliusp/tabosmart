@@ -1,0 +1,27 @@
+{
+  "model": "mlx-community/chatterbox-multilingual-v3",
+  "reference_source": "https://www.youtube.com/watch?v=8k0lNtIhPWs",
+  "reference_start_seconds": 13.04,
+  "reference_end_seconds": 22.1,
+  "reference_duration_seconds": 9.06,
+  "reference_transcript": "Choose a format. Export as CSV, JSON, or HTML with one click. The file downloads instantly. No account. No setup.",
+  "reference_sha256": "d3d941a853e0dedca33123ace64371865ecb05e5c0237369f4e588bd8f8a691c",
+  "reference_location": "Private local cache, outside repository",
+  "reference_processing": "Contiguous cut, mono downmix and 24kHz resampling only",
+  "cfg_weight": 0.5,
+  "temperature": 0.8,
+  "repetition_penalty": 1.2,
+  "min_p": 0.05,
+  "top_p": 1.0,
+  "language": "en",
+  "seed": 73,
+  "external_voice_upload": false,
+  "waveform_retiming": false,
+  "pitch_shift": false,
+  "internal_gap_edits": false,
+  "sources": [
+    "https://github.com/Blaizzy/mlx-audio/blob/main/docs/models/tts/chatterbox.md",
+    "https://huggingface.co/mlx-community/chatterbox-multilingual-v3",
+    "https://github.com/resemble-ai/chatterbox"
+  ]
+}

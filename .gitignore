@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+*.log
+.env*
+*.pem
+*.tsbuildinfo
+/dist/
+/qa/
+/marketing/store/
+/marketing/community-launch/video/audio/
+/marketing/community-launch/video/frames/
+/marketing/community-launch/video/source/render-command.json
+/marketing/community-launch/video/source/media-metadata.json

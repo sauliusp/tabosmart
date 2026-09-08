@@ -1,0 +1,53 @@
+{
+  "text": "You didn't open all those tabs for no reason. You just don't need them all right now. Bring related work together. Review repeat pages. Save links for later. Close only what you choose. Recovery reopens URLs, not unsaved edits. Your browsing data stays on your device. Optional local AI adds suggestions and group names on supported Chrome devices. The core works without it. I'm building this with the people using it. Tell me what missed the point, or what would make it useful tomorrow. Less tab clutter. More headspace.",
+  "scenes": [
+    {
+      "scene": 0,
+      "text": "You didn't open all those tabs for no reason. You just don't need them all right now.",
+      "start": 0,
+      "end": 3.82,
+      "duration": 3.82
+    },
+    {
+      "scene": 1,
+      "text": "Bring related work together. Review repeat pages. Save links for later.",
+      "start": 3.82,
+      "end": 8.28,
+      "duration": 4.46
+    },
+    {
+      "scene": 2,
+      "text": "Close only what you choose. Recovery reopens URLs, not unsaved edits.",
+      "start": 8.28,
+      "end": 14.14,
+      "duration": 5.86
+    },
+    {
+      "scene": 3,
+      "text": "Your browsing data stays on your device. Optional local AI adds suggestions and group names on supported Chrome devices. The core works without it.",
+      "start": 14.14,
+      "end": 23.880000000000003,
+      "duration": 9.74
+    },
+    {
+      "scene": 4,
+      "text": "I'm building this with the people using it. Tell me what missed the point, or what would make it useful tomorrow.",
+      "start": 23.880000000000003,
+      "end": 29.340000000000003,
+      "duration": 5.46
+    },
+    {
+      "scene": 5,
+      "text": "Less tab clutter. More headspace.",
+      "start": 29.340000000000003,
+      "end": 31.760000000000005,
+      "duration": 2.42
+    }
+  ],
+  "duration": 31.760000000000005,
+  "reference_sha256": "d3d941a853e0dedca33123ace64371865ecb05e5c0237369f4e588bd8f8a691c",
+  "model": "mlx-community/chatterbox-multilingual-v3",
+  "exaggeration": 0.35,
+  "cfg_weight": 0.5,
+  "processing": "Six new natural scene performances joined in order. No tempo, pitch, waveform trimming or inserted pauses."
+}
