@@ -2522,6 +2522,55 @@ test("committed opt-outs notify cached readers before background maintenance set
   }
 });
 
+test("committed erasure notifies other workspaces before index deletion or alarm cleanup settles", async () => {
+  for (const stage of ["history", "alarms"]) {
+    const f = fixture();
+    const store = {
+      getMeta: async () => null,
+      count: async () => 0,
+      clear: async () => {},
+    };
+    const b = f.backend(
+      stage === "history" ? { historyOptions: { store } } : {},
+    );
+    const before = await b.handle({ type: "snapshot" });
+    const saved = await b.handle({
+      type: "save",
+      tabIds: [1],
+      expectedTabs: before.tabs,
+    });
+    assert.equal(saved.saved.length, 1);
+    let release, entered;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const waiting = new Promise((resolve) => {
+      entered = resolve;
+    });
+    const hold = async () => {
+      entered();
+      await gate;
+      return true;
+    };
+    if (stage === "history") store.clear = hold;
+    else f.api.alarms.clear = hold;
+    f.calls.length = 0;
+    const erasing = b.handle({ type: "clearData" });
+    await waiting;
+    assert(
+      f.calls.some(([type]) => type === "notify"),
+      stage,
+    );
+    const visible = await b.handle({ type: "cachedSnapshot" });
+    assert.equal(visible.settings.enabled, false, stage);
+    assert.equal(visible.consentAt, null, stage);
+    assert.deepEqual(visible.saved, [], stage);
+    assert.deepEqual(f.local[STORAGE_KEY].saved, [], stage);
+    release();
+    assert.equal((await erasing).ok, true, stage);
+  }
+});
+
 test("popup tabs are excluded from inventory, reviewed actions, and restore destinations", async () => {
   const f = fixture([
       tab(8, { windowId: 8, windowType: "popup" }),

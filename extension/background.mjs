@@ -748,6 +748,9 @@ export function createBackend(
         state = previousState;
         throw error;
       }
+      // Erased records and stopped observation are already committed. Let
+      // every open workspace discard its old data before cleanup can wait.
+      notify();
       if (timer !== null) {
         clearTimer(timer);
         timer = null;
