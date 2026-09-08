@@ -2571,6 +2571,58 @@ test("committed erasure notifies other workspaces before index deletion or alarm
   }
 });
 
+test("cold-start alarm failures preserve readable data, opt-out and erasure with a recoverable warning", async () => {
+  for (const method of ["get", "create", "clear"]) {
+    for (const operation of ["cachedSnapshot", "settings", "clearData"]) {
+      const f = fixture(),
+        initial = await enabled(f);
+      const before = await initial.handle({ type: "snapshot" });
+      await initial.handle({
+        type: "save",
+        tabIds: [1],
+        expectedTabs: before.tabs,
+      });
+      if (method === "clear")
+        await initial.handle({ type: "settings", patch: { enabled: false } });
+      if (method === "create") f.alarms.delete(MAINTENANCE_ALARM);
+      const original = f.api.alarms[method];
+      f.api.alarms[method] = async () => {
+        throw new Error("Alarm service unavailable");
+      };
+      const restarted = f.backend();
+      const result = await restarted.handle({
+        type: operation,
+        patch: { aiEnabled: false },
+      });
+      assert.equal(result.ok, true, `${method}: ${operation}`);
+      // Erasure switches to alarm clearing, which can itself recover an earlier
+      // get/create failure. Otherwise the unavailable API keeps its warning.
+      if (operation === "clearData" && method !== "clear")
+        assert.equal(result.schedulingWarning, null);
+      else assert.match(result.schedulingWarning, /privacy controls still work/);
+      if (operation === "settings") {
+        assert.equal(result.settings.aiEnabled, false);
+        assert.equal(f.local[STORAGE_KEY].settings.aiEnabled, false);
+      } else if (operation === "clearData") {
+        assert.equal(result.settings.enabled, false);
+        assert.deepEqual(result.saved, []);
+        assert.deepEqual(f.local[STORAGE_KEY].saved, []);
+      } else assert.equal(result.saved.length, 1);
+      f.api.alarms[method] = original;
+      const recovered = await restarted.handle({
+        type: "settings",
+        patch: { aiEnabled: false },
+      });
+      assert.equal(recovered.ok, true);
+      assert.equal(recovered.schedulingWarning, null);
+      assert.equal(
+        (await restarted.handle({ type: "cachedSnapshot" })).schedulingWarning,
+        null,
+      );
+    }
+  }
+});
+
 test("popup tabs are excluded from inventory, reviewed actions, and restore destinations", async () => {
   const f = fixture([
       tab(8, { windowId: 8, windowType: "popup" }),

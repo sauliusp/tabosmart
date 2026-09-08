@@ -58,7 +58,8 @@ export function createBackend(
   let state,
     ready,
     queue = Promise.resolve();
-  let timer = null;
+  let timer = null,
+    schedulingWarning = null;
   const queuedChecks = new Map();
   const workspaceView = createWorkspaceView(api);
   const toolbar = createToolbarState(api);
@@ -154,20 +155,27 @@ export function createBackend(
   }
   async function maintainAlarms() {
     if (!api.alarms) return;
-    if (state.settings.enabled) {
-      if (!(await api.alarms.get(MAINTENANCE_ALARM)))
-        await api.alarms.create(MAINTENANCE_ALARM, {
-          delayInMinutes: 15,
-          periodInMinutes: 15,
-        });
-      if (
-        state.evaluation.state === "checking" &&
-        !(await api.alarms.get(EVALUATION_ALARM))
-      )
-        await api.alarms.create(EVALUATION_ALARM, { delayInMinutes: 0.5 });
-    } else {
-      await api.alarms.clear(MAINTENANCE_ALARM);
-      await api.alarms.clear(EVALUATION_ALARM);
+    try {
+      if (state.settings.enabled) {
+        if (!(await api.alarms.get(MAINTENANCE_ALARM)))
+          await api.alarms.create(MAINTENANCE_ALARM, {
+            delayInMinutes: 15,
+            periodInMinutes: 15,
+          });
+        if (
+          state.evaluation.state === "checking" &&
+          !(await api.alarms.get(EVALUATION_ALARM))
+        )
+          await api.alarms.create(EVALUATION_ALARM, { delayInMinutes: 0.5 });
+      } else {
+        await api.alarms.clear(MAINTENANCE_ALARM);
+        await api.alarms.clear(EVALUATION_ALARM);
+      }
+      schedulingWarning = null;
+    } catch (error) {
+      schedulingWarning =
+        "Chrome could not update background scheduling. Manual tab checks and privacy controls still work. Scheduling retries at the next browser start or preference change.";
+      throw error;
     }
   }
   async function initialize() {
@@ -214,7 +222,9 @@ export function createBackend(
         error: error.message,
       };
     }
-    await maintainAlarms();
+    // Scheduling is recoverable independently of stored user preferences.
+    // An alarm-service error must not prevent cold-start opt-out or erasure.
+    await maintainAlarms().catch(() => {});
     updateToolbar();
     void configureHistory().catch(() => {});
   }
@@ -383,6 +393,7 @@ export function createBackend(
     return {
       snapshotEpoch,
       snapshotRevision,
+      schedulingWarning,
       tabs: cached?.tabs || [],
       suggestions: enriched?.suggestions || cached?.suggestions || [],
       evaluationSummary:
@@ -407,6 +418,7 @@ export function createBackend(
     // Fast readers remain responsive, but never consume an uncommitted opt-in,
     // erase, protection or saved-list edit while its storage write is pending.
     const snapshot = structuredClone(mutationReadSnapshot);
+    snapshot.schedulingWarning = schedulingWarning;
     if (
       snapshot.settings.enabled &&
       queuedChecks.size &&
@@ -1159,6 +1171,7 @@ export function createBackend(
                 return {
                   ok: true,
                   ...(await action(message)),
+                  schedulingWarning,
                   history: history.snapshot(),
                   installDisclosure: state.installDisclosure === true,
                 };
