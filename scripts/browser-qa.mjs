@@ -329,6 +329,48 @@ try {
       (a) => a.name === "tabosmart.maintenance" && a.periodInMinutes === 15,
     ),
   );
+  // Simulate an open workspace outliving its worker's volatile revisions.
+  // Each opt-out commits in a newer worker generation with a lower revision.
+  await page.evaluate(async () => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    let epoch = (await send({ type: "cachedSnapshot" })).snapshotEpoch;
+    let lowered = false;
+    window.qaOriginalSend = send;
+    window.qaRaiseRevision = () => {
+      lowered = false;
+    };
+    chrome.runtime.sendMessage = async (message, ...args) => {
+      if (
+        message.type === "settings" &&
+        Object.values(message.patch || {}).includes(false)
+      ) {
+        epoch++;
+        lowered = true;
+      }
+      const result = await send(message, ...args);
+      if (result?.tabs) {
+        result.snapshotEpoch = epoch;
+        result.snapshotRevision = lowered ? 0 : 1000000;
+      }
+      return result;
+    };
+  });
+  for (const [off, on] of [
+    ["Turn off local AI", "Enable local AI"],
+    ["Turn off history insights", "Use history insights"],
+  ]) {
+    await page.evaluate(() => window.qaRaiseRevision());
+    await page
+      .getByRole("button", { name: "Refresh suggestions", exact: true })
+      .click();
+    await page.getByRole("button", { name: off, exact: true }).click();
+    await page.getByRole("button", { name: on, exact: true }).waitFor();
+    check(`${off} accepts a committed opt-out from a newer worker generation`);
+  }
+  await page.evaluate(() => window.qaRaiseRevision());
+  await page
+    .getByRole("button", { name: "Refresh suggestions", exact: true })
+    .click();
   await page.getByRole("button", { name: "Pause observation" }).click();
   await page.locator('[data-view="suggestions"]').first().click();
   check(
@@ -340,6 +382,16 @@ try {
     "Pause stops tab observations",
     !paused.settings.enabled && paused.tabs.length === 0,
   );
+  check(
+    "Pause accepts a committed opt-out from a newer worker generation",
+    await page.locator(".pause-banner").isVisible(),
+  );
+  await page.evaluate(() => {
+    chrome.runtime.sendMessage = window.qaOriginalSend;
+  });
+  await page.reload();
+  await page.locator('[data-view="suggestions"]').first().click();
+  await page.locator("#resume").waitFor();
   await page.locator("#resume").click();
   await page.locator('[data-view="tabs"]').first().click();
   await page.locator("[data-protect]").first().click();

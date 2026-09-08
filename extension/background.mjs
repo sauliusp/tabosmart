@@ -36,6 +36,7 @@ export const STORAGE_KEY = "tabosmart.v1";
 export const EVALUATION_ALARM = "tabosmart.evaluate";
 export const MAINTENANCE_ALARM = "tabosmart.maintenance";
 const SESSION_KEY = "tabosmart.session";
+const WORKER_EPOCH_KEY = "tabosmart.workerEpoch";
 function fault(message, code = "ACTION_FAILED") {
   return Object.assign(new Error(message), { code });
 }
@@ -134,7 +135,8 @@ export function createBackend(
       await history.configure(state.settings);
     updateToolbar();
   }
-  let snapshotRevision = 0;
+  let snapshotRevision = 0,
+    snapshotEpoch = 0;
   const persist = () => {
     state.snapshotRevision = ++snapshotRevision;
     return api.storage.local.set({ [STORAGE_KEY]: prepareStorageState(state) });
@@ -185,6 +187,14 @@ export function createBackend(
     const sessionId = session[SESSION_KEY] || id("session", now());
     if (!session[SESSION_KEY])
       await api.storage.session.set({ [SESSION_KEY]: sessionId });
+    // Revisions can advance without a local write. A session-scoped generation
+    // lets open workspaces reject old-worker replies after an MV3 restart.
+    const previousEpoch = (await api.storage.session.get(WORKER_EPOCH_KEY))[
+      WORKER_EPOCH_KEY
+    ];
+    snapshotEpoch =
+      (Number.isSafeInteger(previousEpoch) ? previousEpoch : 0) + 1;
+    await api.storage.session.set({ [WORKER_EPOCH_KEY]: snapshotEpoch });
     startSession(state, sessionId, now());
     // Only trusted extension contexts can read persisted browsing metadata.
     await api.storage.local.setAccessLevel?.({
@@ -229,7 +239,7 @@ export function createBackend(
     try {
       await persist();
       notify();
-      const tabs = await api.tabs.query({});
+      const tabs = await api.tabs.query({ windowType: "normal" });
       nativeGroups = await readNativeGroups();
       historyFacts = state.settings.historyEnabled
         ? await history.facts(tabs.filter(isWebTab).map((tab) => tab.url))
@@ -307,6 +317,7 @@ export function createBackend(
     const tabs = await synchronize();
     return {
       ...makeSnapshot(state, tabs, now(), historyFacts),
+      snapshotEpoch,
       snapshotRevision,
     };
   }
@@ -344,6 +355,7 @@ export function createBackend(
       evaluation.error = null;
     }
     return {
+      snapshotEpoch,
       snapshotRevision,
       tabs: cached?.tabs || [],
       suggestions: enriched?.suggestions || cached?.suggestions || [],
@@ -478,7 +490,7 @@ export function createBackend(
     if (type === "discoverGroups") {
       if (!state.settings.enabled || !state.settings.aiEnabled)
         throw fault("Local AI is off.", "DISABLED");
-      const rawTabs = await api.tabs.query({});
+      const rawTabs = await api.tabs.query({ windowType: "normal" });
       nativeGroups = await readNativeGroups();
       const base = makeCoreSnapshot(
         state,
@@ -526,7 +538,7 @@ export function createBackend(
       enrichedSnapshot = withDiscovery(base, rawTabs);
       state.snapshotRevision = ++snapshotRevision;
       notify();
-      return { ...enrichedSnapshot, snapshotRevision };
+      return { ...enrichedSnapshot, snapshotEpoch, snapshotRevision };
     }
     // Privacy controls must remain usable even if Chrome cannot currently answer
     // a tab query. Only actions that inspect live tabs need this preflight.
@@ -552,6 +564,7 @@ export function createBackend(
     if (type === "snapshot")
       return {
         ...makeSnapshot(state, rawTabs, now(), historyFacts),
+        snapshotEpoch,
         snapshotRevision,
       };
     if (type === "dismiss") {
@@ -633,9 +646,26 @@ export function createBackend(
         clearTimer(timer);
         timer = null;
       }
-      await maintainAlarms();
-      await configureHistory();
+      const warnings = [];
+      try {
+        await maintainAlarms();
+      } catch {
+        warnings.push(
+          "Your preferences were saved, but Chrome could not update background scheduling.",
+        );
+      }
+      try {
+        await configureHistory();
+      } catch {
+        warnings.push(
+          "Your preferences were saved, but history maintenance could not finish. Check the history status or try Erase local data again.",
+        );
+      }
       notify();
+      return actionResponse({
+        type,
+        ...(warnings.length ? { warning: warnings.join(" ") } : {}),
+      });
     } else if (type === "dismissDisclosure") {
       state.installDisclosure = false;
       await persist();
@@ -705,7 +735,7 @@ export function createBackend(
         String(target?.title || message.name || "Related tabs")
           .trim()
           .slice(0, 80) || "Related tabs";
-      const currentTabs = await api.tabs.query({});
+      const currentTabs = await api.tabs.query({ windowType: "normal" });
       tabs = validateSelection(
         currentTabs,
         state,
@@ -742,6 +772,7 @@ export function createBackend(
       // Accepting a suggestion is a resolved decision. Native ungrouping should
       // not immediately cause Tabosmart to propose the same membership again.
       if (accepted) state.dismissed[accepted.fingerprint] = now();
+      const warnings = [];
       try {
         if (!target)
           await api.tabGroups.update(groupId, {
@@ -750,12 +781,9 @@ export function createBackend(
             collapsed: false,
           });
       } catch {
-        return actionResponse({
-          type,
-          groupId,
-          warning:
-            "The tabs were grouped, but the name could not be set. Rename the group in Chrome.",
-        });
+        warnings.push(
+          "The tabs were grouped, but the name could not be set. Rename the group in Chrome.",
+        );
       }
       rememberGroupingChoice(
         state.groupingContext,
@@ -765,11 +793,18 @@ export function createBackend(
         name,
         now(),
       );
-      await persist();
+      try {
+        await persist();
+      } catch {
+        warnings.push(
+          "The tabs were grouped, but Chrome could not save this choice for future suggestions.",
+        );
+      }
       return actionResponse({
         type,
         groupId,
         tabIds: tabs.map((tab) => tab.id),
+        ...(warnings.length ? { warning: warnings.join(" ") } : {}),
         message: target
           ? `Tabs added to ${target.title}.`
           : "Tabs grouped. Use the group menu in Chrome to ungroup them.",
@@ -866,7 +901,10 @@ export function createBackend(
     } else if (type === "restore") {
       if (!["saved", "recovery"].includes(message.kind))
         throw fault("Unknown saved list.", "INVALID_REQUEST");
-      const entry = state[message.kind].find((item) => item.id === message.id);
+      const entryIndex = state[message.kind].findIndex(
+        (item) => item.id === message.id,
+      );
+      let entry = state[message.kind][entryIndex];
       if (!entry)
         throw fault("This saved item is no longer available.", "STALE");
       if (message.again === true) {
@@ -875,6 +913,9 @@ export function createBackend(
             "Recovery items cannot be replayed. Open a saved URL manually if needed.",
             "INVALID_REQUEST",
           );
+        const previousEntry = entry;
+        entry = structuredClone(entry);
+        state[message.kind][entryIndex] = entry;
         for (const item of entry.tabs) {
           delete item.restoredAt;
           delete item.restoredTabId;
@@ -883,11 +924,27 @@ export function createBackend(
           item.status = "saved";
         }
         entry.lastReplayAt = now();
-        await persist();
+        try {
+          await persist();
+        } catch (error) {
+          state[message.kind][entryIndex] = previousEntry;
+          throw error;
+        }
       }
       const restored = [],
         failed = [],
         skipped = [];
+      let warning;
+      async function saveRestoreProgress() {
+        try {
+          await persist();
+          return true;
+        } catch {
+          warning =
+            "Chrome could not save the latest restore status. Opened tabs remain open; remaining URLs were left unopened. Check your tabs before trying again.";
+          return false;
+        }
+      }
       for (const item of entry.tabs) {
         if (
           item.restoredAt ||
@@ -905,33 +962,44 @@ export function createBackend(
         // If a worker stopped after opening but before persisting, resolve its pending
         // intent against live URLs. This may reuse an existing copy conservatively.
         if (item.restorePendingAt || item.status === "pending-close") {
-          const open = (await api.tabs.query({})).find(
-            (tab) => isWebTab(tab) && tab.url === item.url,
-          );
+          let open;
+          try {
+            open = (await api.tabs.query({ windowType: "normal" })).find(
+              (tab) => isWebTab(tab) && tab.url === item.url,
+            );
+          } catch {
+            warning =
+              "Chrome could not check the open tabs. Remaining URLs were left unopened. Try again when Chrome is ready.";
+            break;
+          }
           if (open) {
             item.restoredAt = now();
             item.restoredTabId = open.id;
             item.status = "restored";
             delete item.error;
             skipped.push(item.id);
-            await persist();
+            if (!(await saveRestoreProgress())) break;
             continue;
           }
           if (item.restorePendingAt) {
             item.error =
               "A previous restore could not be confirmed. Check your open tabs before opening this URL manually.";
             failed.push(item.id);
-            await persist();
+            if (!(await saveRestoreProgress())) break;
             continue;
           }
         }
-        let created = false;
+        const previousItem = structuredClone(item);
+        item.restorePendingAt = now();
+        if (!(await saveRestoreProgress())) {
+          entry.tabs[entry.tabs.indexOf(item)] = previousItem;
+          failed.push(item.id);
+          break;
+        }
         try {
-          item.restorePendingAt = now();
-          await persist();
-          const regularWindow = (await api.tabs.query({})).find(
-            (tab) => !tab.incognito && Number.isInteger(tab.windowId),
-          );
+          const regularWindow = (
+            await api.tabs.query({ windowType: "normal" })
+          ).find((tab) => !tab.incognito && Number.isInteger(tab.windowId));
           const tab = regularWindow
             ? await api.tabs.create({
                 url: item.url,
@@ -945,19 +1013,19 @@ export function createBackend(
                   focused: false,
                 })
               ).tabs[0];
-          created = true;
           item.restoredTabId = tab.id;
           item.restoredAt = now();
           item.status = "restored";
           delete item.error;
           restored.push(tab.id);
-          await persist();
         } catch (error) {
-          if (!created) delete item.restorePendingAt;
+          delete item.restorePendingAt;
           item.error = error.message;
           failed.push(item.id);
-          await persist();
         }
+        // Native creation has committed. A failed checkpoint must never classify
+        // the same URL as both opened and failed, or make the whole action fail.
+        if (!(await saveRestoreProgress())) break;
       }
       return actionResponse({
         type,
@@ -965,6 +1033,7 @@ export function createBackend(
         failed,
         skipped,
         count: restored.length,
+        ...(warning ? { warning } : {}),
       });
     } else throw fault("Unknown request.", "INVALID_REQUEST");
     return actionResponse({ type });

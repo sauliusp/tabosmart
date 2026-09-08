@@ -135,8 +135,12 @@ function stopUIAI(erase = false) {
 }
 function acceptData(next, erased = false) {
   // Runtime responses can arrive after a newer background notification.
+  const nextEpoch = next.snapshotEpoch || 0;
+  const currentEpoch = data?.snapshotEpoch || 0;
+  if (nextEpoch < currentEpoch) return;
   if (
     !erased &&
+    nextEpoch === currentEpoch &&
     Number.isSafeInteger(next.snapshotRevision) &&
     Number.isSafeInteger(data?.snapshotRevision) &&
     next.snapshotRevision < data.snapshotRevision
@@ -146,6 +150,7 @@ function acceptData(next, erased = false) {
   const stopped =
     erase ||
     (data?.settings.aiEnabled && !next.settings.aiEnabled) ||
+    (data?.settings.historyEnabled && !next.settings.historyEnabled) ||
     (data?.settings.enabled && !next.settings.enabled);
   if (stopped) stopUIAI(erase);
   if (erase) {

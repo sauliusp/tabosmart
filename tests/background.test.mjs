@@ -81,8 +81,10 @@ function fixture(initial = [tab(1), tab(2), tab(3)], local = {}, session = {}) {
         return copy(
           tabs.filter(
             (item) =>
-              filter.windowId === undefined ||
-              item.windowId === filter.windowId,
+              (filter.windowId === undefined ||
+                item.windowId === filter.windowId) &&
+              (filter.windowType === undefined ||
+                (item.windowType || "normal") === filter.windowType),
           ),
         );
       },
@@ -2271,4 +2273,253 @@ test("failed protect and unprotect writes cannot silently commit on later action
       protectedValue,
     );
   }
+});
+
+test("native grouping remains successful when learning persistence fails", async () => {
+  for (const persistent of [false, true]) {
+    const f = fixture(),
+      b = await enabled(f);
+    const snap = await b.handle({ type: "snapshot" });
+    const suggestion = snap.suggestions.find((s) => s.type === "group");
+    const update = f.api.tabGroups.update,
+      set = f.api.storage.local.set;
+    let committed = false,
+      rejected = false;
+    f.api.tabGroups.update = async (...args) => {
+      await update(...args);
+      committed = true;
+    };
+    f.api.storage.local.set = async (value) => {
+      if (committed && (persistent || !rejected)) {
+        rejected = true;
+        throw new Error("Temporary save failure");
+      }
+      return set(value);
+    };
+    const result = await b.handle({
+      type: "group",
+      suggestionId: suggestion.id,
+      tabIds: suggestion.tabIds,
+      expectedTabs: snap.tabs,
+      name: "Example work",
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.action.tabIds, suggestion.tabIds);
+    assert.match(result.action.warning, /grouped.*could not save/);
+    assert(
+      suggestion.tabIds.every(
+        (id) =>
+          f.tabs().find((t) => t.id === id).groupId === result.action.groupId,
+      ),
+    );
+    assert.equal(f.calls.filter((c) => c[0] === "group").length, 1);
+  }
+});
+
+test("failed replay reset stays confirmation gated through later writes and worker restart", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const snap = await b.handle({ type: "snapshot" });
+  const saved = await b.handle({
+    type: "save",
+    tabIds: [1],
+    expectedTabs: snap.tabs,
+  });
+  const request = { type: "restore", kind: "saved", id: saved.action.id };
+  await b.handle(request);
+  const before = copy((await b.handle({ type: "cachedSnapshot" })).saved[0]);
+  const createCount = f.calls.filter((c) => c[0] === "create").length;
+  f.failures.storage = true;
+  assert.equal((await b.handle({ ...request, again: true })).ok, false);
+  assert.deepEqual(
+    (await b.handle({ type: "cachedSnapshot" })).saved[0],
+    before,
+  );
+  f.failures.storage = false;
+  await b.handle({ type: "settings", patch: { inactivityDays: 14 } });
+  assert.deepEqual(f.local[STORAGE_KEY].saved[0], before);
+  const restarted = f.backend();
+  assert.equal((await restarted.handle(request)).action.count, 0);
+  assert.equal(f.calls.filter((c) => c[0] === "create").length, createCount);
+  assert.equal(
+    (await restarted.handle({ ...request, again: true })).action.count,
+    1,
+  );
+});
+
+test("created restores survive transient or persistent status-save failure without duplicate classification", async () => {
+  for (const persistent of [false, true]) {
+    const f = fixture(),
+      b = await enabled(f);
+    const snap = await b.handle({ type: "snapshot" });
+    const saved = await b.handle({
+      type: "save",
+      tabIds: [1, 2],
+      expectedTabs: snap.tabs,
+    });
+    const request = { type: "restore", kind: "saved", id: saved.action.id };
+    const create = f.api.tabs.create,
+      set = f.api.storage.local.set;
+    let committed = false,
+      rejected = false;
+    f.api.tabs.create = async (...args) => {
+      const tab = await create(...args);
+      committed = true;
+      return tab;
+    };
+    f.api.storage.local.set = async (value) => {
+      if (committed && (persistent || !rejected)) {
+        rejected = true;
+        throw new Error("Temporary save failure");
+      }
+      return set(value);
+    };
+    const result = await b.handle(request);
+    assert.equal(result.ok, true);
+    assert.equal(result.action.count, 1);
+    assert.deepEqual(result.action.failed, []);
+    assert.match(result.action.warning, /Opened tabs remain open/);
+    assert.equal(result.saved[0].tabs[0].status, "restored");
+    assert.equal(result.saved[0].tabs[0].error, undefined);
+    const reopenedId = result.action.restored[0];
+    assert(f.tabs().some((t) => t.id === reopenedId));
+    f.api.storage.local.set = set;
+    f.api.tabs.create = create;
+    const resumed = await f.backend().handle(request);
+    assert.equal(resumed.ok, true);
+    assert.equal(
+      resumed.action.count,
+      1,
+      "Only the remaining URL opens after restart",
+    );
+    assert.equal(
+      f.calls.filter((c) => c[0] === "create" && c[1].url === snap.tabs[0].url)
+        .length,
+      1,
+    );
+  }
+});
+
+test("failed restore checkpoint never creates a tab or leaks a pending intent into later writes", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const snap = await b.handle({ type: "snapshot" });
+  const saved = await b.handle({
+    type: "save",
+    tabIds: [1],
+    expectedTabs: snap.tabs,
+  });
+  const request = { type: "restore", kind: "saved", id: saved.action.id };
+  f.failures.storage = true;
+  const result = await b.handle(request);
+  assert.equal(result.action.count, 0);
+  assert.equal(result.saved[0].tabs[0].restorePendingAt, undefined);
+  assert.equal(f.calls.filter((c) => c[0] === "create").length, 0);
+  f.failures.storage = false;
+  await b.handle({ type: "settings", patch: { inactivityDays: 14 } });
+  assert.equal(
+    f.local[STORAGE_KEY].saved[0].tabs[0].restorePendingAt,
+    undefined,
+  );
+  assert.equal((await b.handle(request)).action.count, 1);
+});
+
+test("worker generations supersede unpersisted discovery revisions for every opt-out", async () => {
+  for (const patch of [
+    { enabled: false },
+    { aiEnabled: false },
+    { historyEnabled: false },
+  ]) {
+    const f = fixture(),
+      b = await enabled(f);
+    const snap = await b.handle({ type: "snapshot" });
+    let published;
+    for (let i = 0; i < 20; i++)
+      published = await b.handle({
+        type: "discoverGroups",
+        key: discoveryKey(snap),
+        tabIds: [],
+        groups: [],
+      });
+    assert(published.snapshotRevision > f.local[STORAGE_KEY].snapshotRevision);
+    const restarted = await f.backend().handle({ type: "settings", patch });
+    assert.equal(restarted.ok, true);
+    assert(restarted.snapshotEpoch > published.snapshotEpoch);
+    assert(restarted.snapshotRevision < published.snapshotRevision);
+    for (const [key, value] of Object.entries(patch))
+      assert.equal(restarted.settings[key], value);
+  }
+});
+
+test("committed opt-outs remain successful when post-save background scheduling fails", async () => {
+  for (const patch of [
+    { enabled: false },
+    { aiEnabled: false },
+    { historyEnabled: false },
+  ]) {
+    const f = fixture(),
+      b = await enabled(f);
+    f.api.alarms.get = f.api.alarms.clear = async () => {
+      throw new Error("Alarm service unavailable");
+    };
+    const result = await b.handle({ type: "settings", patch });
+    assert.equal(result.ok, true);
+    assert.match(result.action.warning, /preferences were saved/);
+    for (const [key, value] of Object.entries(patch)) {
+      assert.equal(result.settings[key], value);
+      assert.equal(f.local[STORAGE_KEY].settings[key], value);
+    }
+  }
+});
+
+test("popup tabs are excluded from inventory, reviewed actions, and restore destinations", async () => {
+  const f = fixture([
+      tab(8, { windowId: 8, windowType: "popup" }),
+      tab(1),
+      tab(2),
+      tab(3),
+    ]),
+    b = await enabled(f);
+  const snap = await b.handle({ type: "snapshot" });
+  assert.deepEqual(snap.tabs.map((t) => t.id).sort(), [1, 2, 3]);
+  assert(snap.suggestions.every((s) => !s.tabIds.includes(8)));
+  assert.equal(
+    (
+      await b.handle({
+        type: "save",
+        tabIds: [8],
+        expectedTabs: [tab(8, { windowId: 8 })],
+      })
+    ).ok,
+    false,
+  );
+  const saved = await b.handle({
+    type: "save",
+    tabIds: [1],
+    expectedTabs: snap.tabs,
+  });
+  const restored = await b.handle({
+    type: "restore",
+    kind: "saved",
+    id: saved.action.id,
+  });
+  assert.equal(restored.ok, true);
+  assert.equal(f.calls.findLast((c) => c[0] === "create")[1].windowId, 1);
+  const suggestion = snap.suggestions.find((s) => s.type === "group");
+  f.mutate((tabs) =>
+    tabs
+      .filter((t) => [1, 2, 3].includes(t.id))
+      .forEach((t) => {
+        t.windowId = 8;
+        t.windowType = "popup";
+      }),
+  );
+  const grouped = await b.handle({
+    type: "group",
+    suggestionId: suggestion.id,
+    tabIds: [1, 2],
+    expectedTabs: snap.tabs,
+  });
+  assert.equal(grouped.ok, false);
+  assert.equal(f.calls.filter((c) => c[0] === "group").length, 0);
 });
