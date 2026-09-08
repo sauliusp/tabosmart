@@ -61,6 +61,9 @@ The extension accesses web history and user activity for the disclosed tab-manag
 ## Reviewer instructions
 Install in desktop Chrome. Local observations and history analysis begin after the browser’s required permission grant; the installation guide and workspace disclosure explain this. Open several related web pages and duplicate a full URL, then refresh suggestions. Review a group, edit its name and confirm. Review repeated pages, select copies and confirm closure after checking unsaved work. Save selected URLs, reopen them from Saved for later, and inspect Recovery. Verify that pinned/audio/protected tabs stay out of suggestions. Settings provides pause, history off, AI off and erase controls. AI is supplementary; unsupported environments retain core functionality. Use explicit setup if Chrome reports a model download is needed. Feedback opens the public Featurebase portal with no tab or history data attached. No account or payment is needed for the extension.
 
+## Promotional video
+https://www.youtube.com/watch?v=pftCdoldqAw
+
 ## Assets
 Use exactly the five numbered PNGs in marketing/community-launch/store, in numeric order. Each is 1280×800 RGB. Small promotion: 440×280. Marquee: 1400×560. The source interface is genuine; browsing data is fictional. No AI-ready state has been fabricated.
 

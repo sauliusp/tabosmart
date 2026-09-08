@@ -22,4 +22,6 @@ The Store screenshots and video show the actual interface with example browsing 
 
 Local verification on 8 September 2026: 321 unit tests passed; extension checks and packaging passed; isolated Chromium integration, favicon, installation-guide and accessibility checks passed; website production build and type checks passed. Optional real model inference and Chrome Web Store publication remain separate checks. Browser QA reports can be regenerated under `qa/`; personal browser records and the narration reference are not part of this public source tree.
 
+Public video: https://youtu.be/pftCdoldqAw.
+
 Live website: https://tabosmart.sauliusdev.chatgpt.site/. Custom-domain purchase and Store submission are pending external dashboard access.
