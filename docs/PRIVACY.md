@@ -76,6 +76,8 @@ Recovery only reopens stored URLs. It cannot restore unsaved edits, forms, login
 
 ## Limited use and contact
 
+Tabosmart complies with the Chrome Web Store User Data Policy, including its Limited Use requirements.
+
 Tabosmart uses handled information only for the tab-management features described here, with no unrelated data sale, advertising or creditworthiness use. The extension uses browsing information only to provide and improve the tab-management features described here. It does not transfer browsing records to the publisher or third parties.
 
 **Publisher and privacy contact:** Saulius Petreikis, saulius.developer@gmail.com.
