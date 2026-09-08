@@ -1,4 +1,13 @@
-# Tabosmart 1.4.0 QA
+# Tabosmart 1.5.0 QA
+
+On 8 September 2026, all 321 unit tests and source checks passed. The unpacked Chromium suite passed installation-guide, favicon, review/action, responsive and accessibility checks. Website TypeScript checks and the production build passed. GitHub Actions repeats these checks on each PR revision. This does not establish real local-model inference or Store approval.
+
+Run `npm ci`, `npm test`, `npm run check`, `npx playwright install chromium`, `npm run qa:browser` and `npm run pack`. Run `npm ci --prefix website` and `npm run build --prefix website` for the site. Generated reports are local and excluded from Git. The current package and campaign index is [ARTIFACTS.md](../ARTIFACTS.md).
+
+## Historical 1.4.0 verification notes
+
+The notes below document the earlier test build. Referenced historical reports and archived source are local artifacts and are not included in the public repository.
+
 
 The [final source report](../qa/final-source-checks.json) records final counts, source hashes and commands. The update is prepared locally for user testing. No personal Chrome profile or installed extension was accessed, and no real model download or inference was attempted.
 
