@@ -2198,3 +2198,77 @@ test("legacy user data above the new budget remains accessible to erase controls
   assert.deepEqual(f.local[STORAGE_KEY].saved, []);
   assert.equal(f.local[STORAGE_KEY].settings.enabled, false);
 });
+
+test("failed settings writes preserve displayed preferences and processing state through later writes", async () => {
+  for (const patch of [{ enabled: false }, { historyEnabled: false }]) {
+    const f = fixture(),
+      b = await enabled(f);
+    const before = await b.handle({ type: "snapshot" });
+    const saved = await b.handle({
+      type: "save",
+      tabIds: [1],
+      expectedTabs: before.tabs,
+    });
+    f.failures.storage = true;
+    const failed = await b.handle({ type: "settings", patch });
+    assert.equal(failed.ok, false);
+    const current = await b.handle({ type: "cachedSnapshot" });
+    assert.deepEqual(current.settings, before.settings);
+    assert.equal(f.alarms.has(MAINTENANCE_ALARM), true);
+    f.failures.storage = false;
+    await b.handle({ type: "forget", kind: "saved", id: saved.action.id });
+    assert.deepEqual(f.local[STORAGE_KEY].settings, before.settings);
+    const retried = await b.handle({ type: "settings", patch });
+    assert.equal(retried.ok, true);
+    for (const [key, value] of Object.entries(patch))
+      assert.equal(retried.settings[key], value);
+    if (patch.enabled === false)
+      assert.equal(f.alarms.has(MAINTENANCE_ALARM), false);
+  }
+});
+
+test("failed protect and unprotect writes cannot silently commit on later actions", async () => {
+  for (const protectedValue of [true, false]) {
+    const f = fixture(),
+      b = await enabled(f);
+    const initial = await b.handle({ type: "snapshot" });
+    if (!protectedValue)
+      await b.handle({
+        type: "protect",
+        tabIds: [1],
+        expectedTabs: initial.tabs,
+        protected: true,
+      });
+    const before = await b.handle({ type: "snapshot" });
+    const saved = await b.handle({
+      type: "save",
+      tabIds: [2],
+      expectedTabs: before.tabs,
+    });
+    f.failures.storage = true;
+    const request = {
+      type: "protect",
+      tabIds: [1],
+      expectedTabs: before.tabs,
+      protected: protectedValue,
+    };
+    assert.equal((await b.handle(request)).ok, false);
+    f.failures.storage = false;
+    await b.handle({ type: "forget", kind: "saved", id: saved.action.id });
+    const after = await b.handle({ type: "snapshot" });
+    assert.equal(
+      !!after.tabs.find((t) => t.id === 1).protected,
+      !protectedValue,
+    );
+    assert.equal(
+      !!f.local[STORAGE_KEY].protectedUrls[initial.tabs[0].url],
+      !protectedValue,
+    );
+    assert.equal((await b.handle(request)).ok, true);
+    assert.equal(
+      !!(await b.handle({ type: "snapshot" })).tabs.find((t) => t.id === 1)
+        .protected,
+      protectedValue,
+    );
+  }
+});

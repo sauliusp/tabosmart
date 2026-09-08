@@ -578,8 +578,14 @@ export function createBackend(
         else delete protectedUrls[tab.url];
       }
       assertUserDataCapacity({ ...state, protectedUrls }, state);
+      const previousProtectedUrls = state.protectedUrls;
       state.protectedUrls = protectedUrls;
-      await persist();
+      try {
+        await persist();
+      } catch (error) {
+        state.protectedUrls = previousProtectedUrls;
+        throw error;
+      }
     } else if (type === "focus") {
       const tab = rawTabs.find((item) => item.id === message.tabId);
       if (!tab || !isWebTab(tab))
@@ -587,6 +593,8 @@ export function createBackend(
       await api.windows.update(tab.windowId, { focused: true });
       await api.tabs.update(tab.id, { active: true });
     } else if (type === "settings") {
+      const previousState = state;
+      state = structuredClone(state);
       const wasEnabled = state.settings.enabled;
       // An explicit boolean AI choice records user provenance; unrelated
       // settings patches preserve the hydrated preference and its origin.
@@ -606,10 +614,6 @@ export function createBackend(
       }
       if (!state.settings.enabled) {
         resetGroupingSession(state.groupingContext);
-        if (timer !== null) {
-          clearTimer(timer);
-          timer = null;
-        }
         state.cached = null;
         state.pendingActivationId = null;
         state.evaluation = {
@@ -619,7 +623,16 @@ export function createBackend(
           error: null,
         };
       }
-      await persist();
+      try {
+        await persist();
+      } catch (error) {
+        state = previousState;
+        throw error;
+      }
+      if (!state.settings.enabled && timer !== null) {
+        clearTimer(timer);
+        timer = null;
+      }
       await maintainAlarms();
       await configureHistory();
       notify();

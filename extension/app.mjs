@@ -136,6 +136,7 @@ function stopUIAI(erase = false) {
 function acceptData(next, erased = false) {
   // Runtime responses can arrive after a newer background notification.
   if (
+    !erased &&
     Number.isSafeInteger(next.snapshotRevision) &&
     Number.isSafeInteger(data?.snapshotRevision) &&
     next.snapshotRevision < data.snapshotRevision

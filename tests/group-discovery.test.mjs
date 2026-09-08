@@ -365,3 +365,43 @@ test("an interrupted batch resumes automatically when the review closes", async 
   assert.equal(published.length, 1);
   controller.reset();
 });
+
+test("failed discovery publication retries cached groups once with backoff", async () => {
+  for (const alwaysFail of [false, true]) {
+    let generated = 0,
+      publications = 0,
+      activity;
+    const c = createProactiveDiscovery({
+      settleMs: 0,
+      generate: async () => {
+        generated++;
+        return [group];
+      },
+      publish: async () => {
+        publications++;
+        if (alwaysFail || publications === 1)
+          throw new Error("Temporary runtime failure");
+      },
+      onActivity: (value) => {
+        activity = value;
+      },
+    });
+    try {
+      c.sync(snap(), context);
+      await tick();
+      assert.equal(publications, 1);
+      assert.equal(activity.inspected, 0);
+      c.sync(snap(), context);
+      await new Promise((resolve) => setTimeout(resolve, 2200));
+      assert.equal(publications, 2);
+      assert.equal(generated, 1);
+      assert.equal(activity.more, false);
+      assert.equal(activity.inspected, alwaysFail ? 0 : tabs.length);
+      c.sync(snap(), context);
+      await tick();
+      assert.equal(publications, 2);
+    } finally {
+      c.reset();
+    }
+  }
+});

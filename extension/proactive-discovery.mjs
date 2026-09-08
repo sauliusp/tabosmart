@@ -117,9 +117,6 @@ export function createProactiveDiscovery({
       if (completed) {
         cache.set(key, { groups, hints: batchHints });
         if (cache.size > 128) cache.delete(cache.keys().next().value);
-        captured.forEach((tab) => covered.add(tab.id));
-        for (const hint of batchHints)
-          if (!hints.has(hint.id)) hints.set(hint.id, hint);
       }
       failures = completed ? 0 : failures + 1;
       if (!completed && (retries.get(key) || 0) < 1) {
@@ -133,8 +130,20 @@ export function createProactiveDiscovery({
           groups,
           tabIds: captured.map((t) => t.id),
         });
+      if (generation === epoch && completed) {
+        captured.forEach((tab) => covered.add(tab.id));
+        for (const hint of batchHints)
+          if (!hints.has(hint.id)) hints.set(hint.id, hint);
+      }
     } catch {
-      failures++;
+      if (generation === epoch) {
+        failures++;
+        if ((retries.get(key) || 0) < 1) {
+          retries.set(key, 1);
+          attempted.delete(key);
+          if (retries.size > 128) retries.delete(retries.keys().next().value);
+        }
+      }
     } finally {
       if (generation === epoch) {
         running = false;

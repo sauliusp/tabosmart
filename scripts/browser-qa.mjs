@@ -383,6 +383,33 @@ try {
     ),
   );
   await page.setViewportSize({ width: 1280, height: 800 });
+  // A restarted MV3 worker can return a lower revision than this workspace.
+  // Explicit erasure must still replace old URLs and cancel workspace AI.
+  await page.evaluate(() => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    let erased = false;
+    chrome.runtime.sendMessage = async (message, ...args) => {
+      if (message?.type === "clearData") erased = true;
+      const result = await send(message, ...args);
+      if (result?.tabs) result.snapshotRevision = erased ? 0 : 1000000;
+      return result;
+    };
+  });
+  await page
+    .getByRole("button", { name: "Refresh suggestions", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Settings & privacy", exact: true })
+    .click();
+  await page.locator("#clear-data").click();
+  await page.locator("#confirm-general").click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
+  await page.locator('[data-view="suggestions"]').first().click();
+  await page.locator("#start").waitFor();
+  check(
+    "Explicit erasure replaces higher-revision workspace data",
+    await page.locator("#start").isVisible(),
+  );
   check("No extension page JavaScript exceptions", errors.length === 0);
   check("Extension UI makes no network requests", requests.length === 0);
   await fs.writeFile(
