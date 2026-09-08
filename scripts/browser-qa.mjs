@@ -58,19 +58,53 @@ const check = (name, value = true) => {
 try {
   await page.goto(`chrome-extension://${id}/index.html`);
   await page.locator(".install-disclosure").waitFor();
-  await page.waitForFunction(async () => (await chrome.tabs.query({})).some(t => t.url === chrome.runtime.getURL("welcome.html")));
+  await page.waitForFunction(async () =>
+    (await chrome.tabs.query({})).some(
+      (t) => t.url === chrome.runtime.getURL("welcome.html"),
+    ),
+  );
   check("Fresh installation automatically opens the bundled welcome page");
-  const welcome = browser.pages().find(p => p.url() === `chrome-extension://${id}/welcome.html`);
+  const welcome = browser
+    .pages()
+    .find((p) => p.url() === `chrome-extension://${id}/welcome.html`);
   await welcome.waitForLoadState();
-  check("Welcome page leads with its value and workspace action", await welcome.locator('h1').innerText().then(t => t.includes('Less tab clutter.')) && await welcome.getByRole('link', {name:'Open my workspace', exact:false}).count() === 2);
-  const welcomeA11y = await new AxeBuilder({page: welcome}).analyze();
-  check("Welcome page has no accessibility violations", welcomeA11y.violations.length === 0);
-  await welcome.screenshot({path: path.join(root, 'qa/screenshots/welcome.png'), fullPage:true});
-  await welcome.setViewportSize({width:390,height:844});
-  check("Welcome fits a narrow viewport", await welcome.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  await welcome.screenshot({path: path.join(root, 'qa/screenshots/welcome-mobile.png'), fullPage:true});
-  await welcome.getByRole('link', {name:'Settings & privacy',exact:true}).first().click();
-  await welcome.getByRole('heading', {name:'Your browsing, your pace.',exact:true}).waitFor();
+  check(
+    "Welcome page leads with its value and workspace action",
+    (await welcome
+      .locator("h1")
+      .innerText()
+      .then((t) => t.includes("Less tab clutter."))) &&
+      (await welcome
+        .getByRole("link", { name: "Open my workspace", exact: false })
+        .count()) === 2,
+  );
+  const welcomeA11y = await new AxeBuilder({ page: welcome }).analyze();
+  check(
+    "Welcome page has no accessibility violations",
+    welcomeA11y.violations.length === 0,
+  );
+  await welcome.screenshot({
+    path: path.join(root, "qa/screenshots/welcome.png"),
+    fullPage: true,
+  });
+  await welcome.setViewportSize({ width: 390, height: 844 });
+  check(
+    "Welcome fits a narrow viewport",
+    await welcome.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  );
+  await welcome.screenshot({
+    path: path.join(root, "qa/screenshots/welcome-mobile.png"),
+    fullPage: true,
+  });
+  await welcome
+    .getByRole("link", { name: "Settings & privacy", exact: true })
+    .first()
+    .click();
+  await welcome
+    .getByRole("heading", { name: "Your browsing, your pace.", exact: true })
+    .waitFor();
   check("Welcome privacy link opens the actual extension settings");
   await welcome.close();
 
@@ -130,8 +164,25 @@ try {
   );
   await page.locator(".suggestion-card").first().waitFor();
   check("Browser events update visible suggestions without manual refresh");
-  await page.waitForFunction(() => [...document.querySelectorAll('.site-favicon')].some(img => img.complete && img.naturalWidth > 0));
-  check("Suggestion favicons load through Chrome's local endpoint", await page.locator('.site-favicon').evaluateAll(images => images.length > 0 && images.every(img => new URL(img.src).protocol === 'chrome-extension:' && new URL(img.src).pathname === '/_favicon/')));
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll(".site-favicon")].some(
+      (img) => img.complete && img.naturalWidth > 0,
+    ),
+  );
+  check(
+    "Suggestion favicons load through Chrome's local endpoint",
+    await page
+      .locator(".site-favicon")
+      .evaluateAll(
+        (images) =>
+          images.length > 0 &&
+          images.every(
+            (img) =>
+              new URL(img.src).protocol === "chrome-extension:" &&
+              new URL(img.src).pathname === "/_favicon/",
+          ),
+      ),
+  );
 
   const snap = await rpc("snapshot");
   check(
@@ -148,7 +199,10 @@ try {
   });
   const group = snap.suggestions.find((s) => s.type === "group");
   await page.locator(`[data-review="${group.id}"]`).click();
-  check("Group review uses website favicons", await page.locator('dialog .site-favicon').count() > 0);
+  check(
+    "Group review uses website favicons",
+    (await page.locator("dialog .site-favicon").count()) > 0,
+  );
   await page.locator("#group-name").fill("Garden ideas");
   await page.getByRole("button", { name: "Create group", exact: true }).click();
   await page.locator("dialog").waitFor({ state: "hidden" });
@@ -180,8 +234,40 @@ try {
   );
   await page.locator('[data-view="saved"]').first().click();
   await page.getByRole("heading", { name: "Keep the possibility." }).waitFor();
-  check("Saved URLs retain local favicon lookup", await page.locator('.collection .site-favicon').count() > 0);
+  check(
+    "Saved URLs retain local favicon lookup",
+    (await page.locator(".collection .site-favicon").count()) > 0,
+  );
   await page.screenshot({ path: path.join(root, "qa/screenshots/saved.png") });
+  // A transient backend failure must leave the same confirmation retryable.
+  await page.evaluate(() => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    let failOnce = true;
+    chrome.runtime.sendMessage = (message, ...args) => {
+      if (message?.type === "forget" && failOnce) {
+        failOnce = false;
+        return Promise.resolve({
+          ok: false,
+          error: "Temporary saved-list failure",
+        });
+      }
+      return send(message, ...args);
+    };
+  });
+  await page.locator("[data-forget]").first().click();
+  await page.locator("#confirm-general").click();
+  await page.locator("dialog .error-inline").waitFor();
+  check(
+    "Confirmation remains open and retryable after a backend failure",
+    (await page.locator("dialog").isVisible()) &&
+      (await page.locator("#confirm-general").isEnabled()),
+  );
+  await page.locator("#confirm-general").click();
+  await page.locator("dialog").waitFor({ state: "hidden" });
+  check(
+    "Retrying the same confirmation removes the saved list",
+    (await rpc("snapshot")).saved.length === 0,
+  );
   await page.locator('[data-view="suggestions"]').first().click();
   await page.locator(`[data-review="${dup.id}"]`).click();
   await page.locator("dialog [data-tab-check]").first().check();
@@ -198,7 +284,10 @@ try {
       closed.recovery[0].tabs[0].url === dup.tabs[0].url,
   );
   await page.locator('[data-view="recovery"]').first().click();
-  check("Recovery URLs use website favicons", await page.locator('.collection .site-favicon').count() > 0);
+  check(
+    "Recovery URLs use website favicons",
+    (await page.locator(".collection .site-favicon").count()) > 0,
+  );
   await page.getByRole("button", { name: "Reopen URLs" }).click();
   const restored = await rpc("snapshot");
   check(

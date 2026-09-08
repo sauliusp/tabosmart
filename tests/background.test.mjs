@@ -1936,5 +1936,265 @@ test("Chrome installation listener opens the internal welcome only on fresh inst
   await installed({ reason: "update", previousVersion: "1.4.0" });
   assert.equal(f.calls.filter(([name]) => name === "create").length, 0);
   await installed({ reason: "install" });
-  assert.deepEqual(f.calls.filter(([name]) => name === "create"), [["create", { url: "chrome-extension://test-id/welcome.html", active: true }]]);
+  assert.deepEqual(
+    f.calls.filter(([name]) => name === "create"),
+    [
+      [
+        "create",
+        { url: "chrome-extension://test-id/welcome.html", active: true },
+      ],
+    ],
+  );
+});
+
+test("cold worker creation captures the opener before deferred state hydration", async () => {
+  const source = tab(1, {
+    url: "https://search.test/search?q=quiet+work",
+    title: "Search",
+  });
+  const child = tab(2, { url: "https://notes.test/work", openerTabId: 1 });
+  const f = fixture([source, child]);
+  await enabled(f);
+  f.setTime(T + 120_000);
+  const originalGet = f.api.storage.local.get;
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  f.api.storage.local.get = async (key) => {
+    await gate;
+    return originalGet(key);
+  };
+  const restarted = f.backend();
+  const created = restarted.created(child);
+  f.mutate((tabs) => {
+    tabs[0].url = "https://search.test/search?q=changed";
+  });
+  release();
+  await created;
+  assert.equal(f.local[STORAGE_KEY].groupingContext.openings.length, 1);
+  assert.equal(
+    f.local[STORAGE_KEY].groupingContext.openings[0].sourceURL,
+    source.url,
+  );
+});
+
+test("erasure persists cleared local state even when history cleanup fails and can be retried", async () => {
+  const f = fixture();
+  let failClear = false,
+    clears = 0;
+  const store = {
+    async getMeta() {},
+    async count() {
+      return 0;
+    },
+    async clear() {
+      clears++;
+      if (failClear) throw new Error("Database temporarily unavailable");
+    },
+  };
+  const b = f.backend({ historyOptions: { store } });
+  const initial = await b.handle({ type: "snapshot" });
+  await b.handle({ type: "save", tabIds: [1], expectedTabs: initial.tabs });
+  failClear = true;
+  const cleared = await b.handle({ type: "clearData" });
+  assert.equal(cleared.ok, true);
+  assert.match(cleared.action.warning, /history index could not be erased/);
+  assert.equal(cleared.history.state, "error");
+  assert.equal(f.local[STORAGE_KEY].settings.enabled, false);
+  assert.equal(f.local[STORAGE_KEY].settings.historyEnabled, false);
+  assert.deepEqual(f.local[STORAGE_KEY].saved, []);
+  assert.deepEqual(f.local[STORAGE_KEY].observations, {});
+  const restarted = f.backend({ historyOptions: { store } });
+  const after = await restarted.handle({ type: "cachedSnapshot" });
+  assert.equal(after.settings.enabled, false);
+  assert.deepEqual(after.saved, []);
+  failClear = false;
+  const retried = await restarted.handle({ type: "clearData" });
+  assert.equal(retried.ok, true);
+  assert.equal(retried.action.warning, undefined);
+  assert.equal(retried.history.state, "off");
+  assert(clears >= 2);
+});
+
+test("committed close result survives a failing post-action tab refresh", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const initial = await b.handle({ type: "snapshot" });
+  const remove = f.api.tabs.remove;
+  f.api.tabs.remove = async (id) => {
+    await remove(id);
+    f.failures.query = true;
+  };
+  const result = await b.handle({
+    type: "close",
+    tabIds: [1],
+    expectedTabs: initial.tabs,
+    confirmed: true,
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.action.closed, [1]);
+  assert.match(result.refreshWarning, /action completed/);
+  assert.equal(f.local[STORAGE_KEY].recovery[0].tabs[0].status, "closed");
+  assert(!f.tabs().some((t) => t.id === 1));
+});
+
+test("save results survive a failing post-commit refresh without creating another batch", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const initial = await b.handle({ type: "snapshot" });
+  const set = f.api.storage.local.set;
+  f.api.storage.local.set = async (value) => {
+    await set(value);
+    if (value[STORAGE_KEY]?.saved.length) f.failures.query = true;
+  };
+  const result = await b.handle({
+    type: "save",
+    tabIds: [1],
+    expectedTabs: initial.tabs,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.action.count, 1);
+  assert.match(result.refreshWarning, /could not refresh/);
+  assert.equal(f.local[STORAGE_KEY].saved.length, 1);
+});
+
+test("long URLs stay within Chrome local quota and an oversized save is refused before growth", async () => {
+  const longTabs = Array.from({ length: 200 }, (_, i) =>
+    tab(i + 1, { url: `https://long.test/${i}?q=${"x".repeat(16000)}` }),
+  );
+  const f = fixture(longTabs);
+  const set = f.api.storage.local.set;
+  f.api.storage.local.set = async (value) => {
+    assert(
+      new TextEncoder().encode(JSON.stringify(value)).length < 10 * 1024 * 1024,
+      "Chrome storage quota",
+    );
+    await set(value);
+  };
+  const b = await enabled(f);
+  const initial = await b.handle({ type: "snapshot" });
+  assert.equal(initial.ok, true);
+  const first = await b.handle({
+    type: "save",
+    tabIds: longTabs.map((t) => t.id),
+    expectedTabs: initial.tabs,
+  });
+  assert.equal(first.ok, true);
+  const second = await b.handle({
+    type: "save",
+    tabIds: longTabs.map((t) => t.id),
+    expectedTabs: initial.tabs,
+  });
+  assert.equal(second.ok, false);
+  assert.equal(second.code, "STORAGE_FULL");
+  const after = await b.handle({ type: "cachedSnapshot" });
+  assert.equal(after.saved.length, 1);
+  assert.equal(after.saved[0].tabs.length, 200);
+});
+
+test("failed list removal preserves the item so the same confirmation can be retried", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const initial = await b.handle({ type: "snapshot" });
+  const saved = await b.handle({
+    type: "save",
+    tabIds: [1],
+    expectedTabs: initial.tabs,
+  });
+  f.failures.storage = true;
+  const failed = await b.handle({
+    type: "forget",
+    kind: "saved",
+    id: saved.action.id,
+  });
+  assert.equal(failed.ok, false);
+  assert.equal((await b.handle({ type: "cachedSnapshot" })).saved.length, 1);
+  f.failures.storage = false;
+  const retried = await b.handle({
+    type: "forget",
+    kind: "saved",
+    id: saved.action.id,
+  });
+  assert.equal(retried.ok, true);
+  assert.deepEqual(retried.saved, []);
+});
+
+test("failed save commit does not leave a phantom batch in memory for a retry", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const initial = await b.handle({ type: "snapshot" });
+  const set = f.api.storage.local.set;
+  let failOnce = true;
+  f.api.storage.local.set = async (value) => {
+    if (value[STORAGE_KEY]?.saved.length && failOnce) {
+      failOnce = false;
+      throw new Error("Temporary storage failure");
+    }
+    return set(value);
+  };
+  assert.equal(
+    (await b.handle({ type: "save", tabIds: [1], expectedTabs: initial.tabs }))
+      .ok,
+    false,
+  );
+  const retry = await b.handle({
+    type: "save",
+    tabIds: [1],
+    expectedTabs: initial.tabs,
+  });
+  assert.equal(retry.ok, true);
+  assert.equal(retry.saved.length, 1);
+});
+
+test("failure to persist a closure result reports the closed tab and leaves the rest open", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const initial = await b.handle({ type: "snapshot" });
+  const remove = f.api.tabs.remove;
+  f.api.tabs.remove = async (id) => {
+    await remove(id);
+    f.failures.storage = true;
+  };
+  const result = await b.handle({
+    type: "close",
+    tabIds: [1, 2],
+    expectedTabs: initial.tabs,
+    confirmed: true,
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.action.closed, [1]);
+  assert.deepEqual(
+    result.action.failed.map((item) => item.tabId),
+    [2],
+  );
+  assert.match(result.action.warning, /could not save/);
+  assert(f.tabs().some((t) => t.id === 2));
+  assert.equal(
+    f.local[STORAGE_KEY].recovery[0].tabs[0].url,
+    initial.tabs[0].url,
+  );
+});
+
+test("legacy user data above the new budget remains accessible to erase controls", async () => {
+  const state = createState(T);
+  state.settings.enabled = true;
+  state.saved = [
+    {
+      id: "legacy",
+      tabs: Array.from({ length: 600 }, (_, i) => ({
+        url: `https://legacy.test/${i}?q=${"x".repeat(16000)}`,
+        title: "Saved link",
+      })),
+    },
+  ];
+  const f = fixture([], { [STORAGE_KEY]: state });
+  const b = f.backend();
+  const cached = await b.handle({ type: "cachedSnapshot" });
+  assert.equal(cached.ok, true);
+  assert.equal(cached.saved[0].tabs.length, 600);
+  const erased = await b.handle({ type: "clearData" });
+  assert.equal(erased.ok, true);
+  assert.deepEqual(f.local[STORAGE_KEY].saved, []);
+  assert.equal(f.local[STORAGE_KEY].settings.enabled, false);
 });

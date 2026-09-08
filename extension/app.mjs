@@ -228,8 +228,10 @@ async function action(type, args = {}, message = "Done.") {
       warning = detail.failed.length > 0;
     }
     notify(
-      detail?.warning || detail?.message || message,
-      warning || !!detail?.warning,
+      [detail?.warning || detail?.message || message, result.refreshWarning]
+        .filter(Boolean)
+        .join(" "),
+      warning || !!detail?.warning || !!result.refreshWarning,
     );
     return result;
   } catch (error) {
@@ -290,9 +292,17 @@ function siteTile(t) {
   return `<span class="site-tile" aria-hidden="true"><svg class="site-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/></svg>${src ? `<img class="site-favicon" src="${esc(src)}" width="16" height="16" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ""}</span>`;
 }
 // Chrome may have no cached icon. Keep a neutral fallback, never a remote lookup.
-document.addEventListener("error", (event) => {
-  if (event.target instanceof HTMLImageElement && event.target.classList.contains("site-favicon")) event.target.remove();
-}, true);
+document.addEventListener(
+  "error",
+  (event) => {
+    if (
+      event.target instanceof HTMLImageElement &&
+      event.target.classList.contains("site-favicon")
+    )
+      event.target.remove();
+  },
+  true,
+);
 
 function heading(title, subtitle, aside = "") {
   return `<div class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div>${aside}</div>`;
@@ -447,8 +457,12 @@ function capabilityRow() {
   return `<div class="setting-row"><div><strong>Local assistance</strong><p>${enabled ? "Enabled. AI can find shared tasks across sites and suggest names when the model is ready. You can turn it off anytime." : "Off. Your suggestions and complete explanations already work. Enable optional assistance whenever you want."}</p></div><button class="button secondary" id="toggle-ai" data-mutate>${enabled ? "Turn off local AI" : "Enable local AI"}</button></div><div class="setting-row"><div><strong>Model status</strong><span class="capability-label ${esc(c.state)}">${esc(c.label)}</span><p>${esc(c.detail || "Optional help with names and explanations, processed on this device.")}</p>${progressText ? `<p class="progress-note" role="status">${esc(progressText)}</p>` : ""}</div>${enabled && ["downloadable", "error", "ready"].includes(c.state) && !setupProgress ? `<button class="button secondary" id="setup-ai">${c.state === "downloadable" ? "Download local model" : c.state === "error" && c.errorSource !== "availability" ? "Try setup again" : "Check availability"}</button>` : ""}</div><p class="group-readiness">Group names: ${enabled ? esc(capabilities.names.label) : "Off"} · Explanation wording: ${enabled ? esc(capabilities.explanations?.label || capabilities.names.label) : "Off"}</p>${setupProgress ? '<p class="small">Chrome is preparing the model on your device. This can take time. You can keep organizing tabs while it finishes.</p>' : ""}`;
 }
 function renderFeedback() {
-  main.innerHTML = heading("A better browser starts with your day.", "Tabosmart is early. Help shape what it becomes.") +
-  `<section class="settings-section"><h2>What were you trying to do?</h2><p>A suggestion that missed the point. A confusing button. The one thing that would make you use Tabosmart tomorrow. Small, specific experiences are the most useful place to start.</p><div class="feedback-panel"><div><h2>Tell us what would make this useful.</h2><p>Share an idea, describe a problem or vote on a request. Include what you expected, what happened and your Chrome version. Please leave private URLs and browsing details out of public posts.</p></div><a class="button primary" href="https://tabosmart.featurebase.app/" target="_blank" rel="noopener noreferrer">Share feedback ${icon("external")}</a></div><div class="feedback-qr"><a href="https://tabosmart.featurebase.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Tabosmart feedback"><img src="icons/feedback-qr.svg" width="132" height="132" alt="QR code linking to Tabosmart feedback"></a><p><strong>Have a thought on your phone?</strong><br>Scan to share it.<br><span class="small">tabosmart.featurebase.app</span></p></div><p class="small">Feedback opens an external service. Nothing from your tabs or history is attached automatically. You choose what to share.</p></section><section class="settings-section"><h2>Useful today. Open to your ideas.</h2><p>Review related tabs, remove selected repeat copies, save URLs for later and reopen them from Recovery. Every action stays your choice. Recovery restores URLs, not unsaved forms or edits.</p><h2>Local AI is an extra pair of eyes.</h2><p>Core suggestions work without it. On supported Chrome devices, optional AI can propose additional relationships, useful group names and clearer wording. Model input is processed on your device, with no cloud fallback. Chrome may need a model download; availability varies by device and language. You can switch AI off in Settings & privacy.</p></section>`;
+  main.innerHTML =
+    heading(
+      "A better browser starts with your day.",
+      "Tabosmart is early. Help shape what it becomes.",
+    ) +
+    `<section class="settings-section"><h2>What were you trying to do?</h2><p>A suggestion that missed the point. A confusing button. The one thing that would make you use Tabosmart tomorrow. Small, specific experiences are the most useful place to start.</p><div class="feedback-panel"><div><h2>Tell us what would make this useful.</h2><p>Share an idea, describe a problem or vote on a request. Include what you expected, what happened and your Chrome version. Please leave private URLs and browsing details out of public posts.</p></div><a class="button primary" href="https://tabosmart.featurebase.app/" target="_blank" rel="noopener noreferrer">Share feedback ${icon("external")}</a></div><div class="feedback-qr"><a href="https://tabosmart.featurebase.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Tabosmart feedback"><img src="icons/feedback-qr.svg" width="132" height="132" alt="QR code linking to Tabosmart feedback"></a><p><strong>Have a thought on your phone?</strong><br>Scan to share it.<br><span class="small">tabosmart.featurebase.app</span></p></div><p class="small">Feedback opens an external service. Nothing from your tabs or history is attached automatically. You choose what to share.</p></section><section class="settings-section"><h2>Useful today. Open to your ideas.</h2><p>Review related tabs, remove selected repeat copies, save URLs for later and reopen them from Recovery. Every action stays your choice. Recovery restores URLs, not unsaved forms or edits.</p><h2>Local AI is an extra pair of eyes.</h2><p>Core suggestions work without it. On supported Chrome devices, optional AI can propose additional relationships, useful group names and clearer wording. Model input is processed on your device, with no cloud fallback. Chrome may need a model download; availability varies by device and language. You can switch AI off in Settings & privacy.</p></section>`;
 }
 
 function renderSettings() {
@@ -573,7 +587,7 @@ function confirmDialog(title, body, button, handler) {
   review = null;
   $("#dialog-content").innerHTML =
     `<div class="dialog-head"><h2 id="dialog-title">${esc(title)}</h2><button class="dismiss" data-close-dialog aria-label="Cancel">${icon("close")}</button></div><div class="dialog-body"><p class="small muted">${esc(body)}</p></div><div class="dialog-footer"><button class="button secondary" data-close-dialog>Cancel</button><button class="button danger" id="confirm-general" data-mutate>${esc(button)}</button></div>`;
-  $("#confirm-general").addEventListener("click", handler, { once: true });
+  $("#confirm-general").addEventListener("click", handler);
   dialog.showModal();
   void syncProactiveNames();
 }

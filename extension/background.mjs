@@ -1,3 +1,7 @@
+import {
+  prepareStorageState,
+  assertUserDataCapacity,
+} from "./storage-budget.mjs";
 import { createInstallationWelcome } from "./installation.mjs";
 import {
   discoveryKey,
@@ -133,7 +137,7 @@ export function createBackend(
   let snapshotRevision = 0;
   const persist = () => {
     state.snapshotRevision = ++snapshotRevision;
-    return api.storage.local.set({ [STORAGE_KEY]: state });
+    return api.storage.local.set({ [STORAGE_KEY]: prepareStorageState(state) });
   };
   function notify() {
     updateToolbar();
@@ -186,10 +190,20 @@ export function createBackend(
     await api.storage.local.setAccessLevel?.({
       accessLevel: "TRUSTED_CONTEXTS",
     });
-    await persist();
+    try {
+      await persist();
+    } catch (error) {
+      // Legacy user-owned data must remain accessible to removal/erase controls.
+      if (!local[STORAGE_KEY] || error.code !== "STORAGE_FULL") throw error;
+      state.evaluation = {
+        ...state.evaluation,
+        state: "error",
+        error: error.message,
+      };
+    }
     await maintainAlarms();
     updateToolbar();
-    void configureHistory();
+    void configureHistory().catch(() => {});
   }
   async function ensureReady() {
     if (!ready)
@@ -295,6 +309,18 @@ export function createBackend(
       ...makeSnapshot(state, tabs, now(), historyFacts),
       snapshotRevision,
     };
+  }
+  async function actionResponse(action) {
+    try {
+      return { ...(await snapshot()), action };
+    } catch {
+      return {
+        ...cachedSnapshot(),
+        action,
+        refreshWarning:
+          "The action completed, but the tab list could not refresh. Check again for the latest tabs.",
+      };
+    }
   }
   function cachedSnapshot() {
     const cached = state.settings.enabled ? state.cached : null;
@@ -404,6 +430,10 @@ export function createBackend(
         status: kind === "recovery" ? "pending-close" : "saved",
       })),
     };
+    assertUserDataCapacity(
+      { ...state, [kind]: [entry, ...state[kind]] },
+      state,
+    );
     state[kind].unshift(entry);
     return entry;
   }
@@ -542,10 +572,13 @@ export function createBackend(
       const tabs = await selected(message, "protect", rawTabs);
       if (typeof message.protected !== "boolean")
         throw fault("Choose whether to protect these tabs.", "INVALID_REQUEST");
+      const protectedUrls = { ...state.protectedUrls };
       for (const tab of tabs) {
-        if (message.protected) state.protectedUrls[tab.url] = now();
-        else delete state.protectedUrls[tab.url];
+        if (message.protected) protectedUrls[tab.url] = now();
+        else delete protectedUrls[tab.url];
       }
+      assertUserDataCapacity({ ...state, protectedUrls }, state);
+      state.protectedUrls = protectedUrls;
       await persist();
     } else if (type === "focus") {
       const tab = rawTabs.find((item) => item.id === message.tabId);
@@ -608,12 +641,20 @@ export function createBackend(
       state.settings.historyEnabled = false;
       state.installDisclosure = false;
       historyFacts = {};
-      if (api.history || globalThis.indexedDB || historyOptions.store)
-        await history.stop({ erase: true });
       state.sessionId = sessionId;
       await persist();
-      await maintainAlarms();
+      let warning;
+      if (api.history || globalThis.indexedDB || historyOptions.store) {
+        try {
+          await history.stop({ erase: true });
+        } catch {
+          warning =
+            "Tabosmart’s local records were erased and observation is off, but the history index could not be erased. Try Erase local data again.";
+        }
+      }
+      await maintainAlarms().catch(() => {});
       notify();
+      return actionResponse({ type, ...(warning ? { warning } : {}) });
     } else if (type === "forget") {
       if (!["saved", "recovery"].includes(message.kind))
         throw fault("Unknown saved list.", "INVALID_REQUEST");
@@ -622,8 +663,13 @@ export function createBackend(
       );
       if (index < 0)
         throw fault("This saved item is no longer available.", "STALE");
-      state[message.kind].splice(index, 1);
-      await persist();
+      const [removed] = state[message.kind].splice(index, 1);
+      try {
+        await persist();
+      } catch (error) {
+        state[message.kind].splice(index, 0, removed);
+        throw error;
+      }
     } else if (type === "group") {
       let tabs = await selected(message, "group", rawTabs);
       const accepted = makeSnapshot(
@@ -691,15 +737,12 @@ export function createBackend(
             collapsed: false,
           });
       } catch {
-        return {
-          ...(await snapshot()),
-          action: {
-            type,
-            groupId,
-            warning:
-              "The tabs were grouped, but the name could not be set. Rename the group in Chrome.",
-          },
-        };
+        return actionResponse({
+          type,
+          groupId,
+          warning:
+            "The tabs were grouped, but the name could not be set. Rename the group in Chrome.",
+        });
       }
       rememberGroupingChoice(
         state.groupingContext,
@@ -710,25 +753,24 @@ export function createBackend(
         now(),
       );
       await persist();
-      return {
-        ...(await snapshot()),
-        action: {
-          type,
-          groupId,
-          tabIds: tabs.map((tab) => tab.id),
-          message: target
-            ? `Tabs added to ${target.title}.`
-            : "Tabs grouped. Use the group menu in Chrome to ungroup them.",
-        },
-      };
+      return actionResponse({
+        type,
+        groupId,
+        tabIds: tabs.map((tab) => tab.id),
+        message: target
+          ? `Tabs added to ${target.title}.`
+          : "Tabs grouped. Use the group menu in Chrome to ungroup them.",
+      });
     } else if (type === "save") {
       const tabs = await selected(message, "save", rawTabs);
       const entry = newBatch("saved", tabs);
-      await persist();
-      return {
-        ...(await snapshot()),
-        action: { type, id: entry.id, count: tabs.length },
-      };
+      try {
+        await persist();
+      } catch (error) {
+        state.saved = state.saved.filter((item) => item !== entry);
+        throw error;
+      }
+      return actionResponse({ type, id: entry.id, count: tabs.length });
     } else if (type === "close") {
       if (message.confirmed !== true)
         throw fault(
@@ -738,9 +780,15 @@ export function createBackend(
       const tabs = await selected(message, "close", rawTabs);
       const entry = newBatch("recovery", tabs);
       // A storage failure here aborts closure. Never remove first and save later.
-      await persist();
+      try {
+        await persist();
+      } catch (error) {
+        state.recovery = state.recovery.filter((item) => item !== entry);
+        throw error;
+      }
       const closed = [],
         failed = [];
+      let warning;
       for (const expected of tabs) {
         const item = entry.tabs.find((tab) => tab.sourceTabId === expected.id);
         try {
@@ -773,12 +821,35 @@ export function createBackend(
           item.error = error.message;
           failed.push({ tabId: expected.id, error: error.message });
         }
-        await persist();
+        try {
+          await persist();
+        } catch {
+          warning = `${closed.length} tabs closed. Their URLs were saved in Recovery before closing, but Chrome could not save the latest closure status. Remaining tabs were left open.`;
+          for (const remaining of tabs) {
+            if (
+              !closed.includes(remaining.id) &&
+              !failed.some((item) => item.tabId === remaining.id)
+            ) {
+              failed.push({
+                tabId: remaining.id,
+                error: "Left open because Recovery could not be updated.",
+              });
+              entry.tabs.find(
+                (item) => item.sourceTabId === remaining.id,
+              ).status = "not-closed";
+            }
+          }
+          break;
+        }
       }
-      return {
-        ...(await snapshot()),
-        action: { type, id: entry.id, closed, failed, count: closed.length },
-      };
+      return actionResponse({
+        type,
+        id: entry.id,
+        closed,
+        failed,
+        count: closed.length,
+        ...(warning ? { warning } : {}),
+      });
     } else if (type === "restore") {
       if (!["saved", "recovery"].includes(message.kind))
         throw fault("Unknown saved list.", "INVALID_REQUEST");
@@ -875,12 +946,15 @@ export function createBackend(
           await persist();
         }
       }
-      return {
-        ...(await snapshot()),
-        action: { type, restored, failed, skipped, count: restored.length },
-      };
+      return actionResponse({
+        type,
+        restored,
+        failed,
+        skipped,
+        count: restored.length,
+      });
     } else throw fault("Unknown request.", "INVALID_REQUEST");
-    return snapshot();
+    return actionResponse({ type });
   }
   return {
     handle: (message, sender) =>
@@ -934,7 +1008,9 @@ export function createBackend(
       const openedAt = now();
       const sourceURLAtEvent = state?.observations[tab?.openerTabId]?.url;
       const capturedOpener =
-        state?.settings.enabled && Number.isInteger(tab?.openerTabId)
+        state?.settings.enabled !== false &&
+        !tab?.incognito &&
+        Number.isInteger(tab?.openerTabId)
           ? api.tabs.get(tab.openerTabId).catch(() => null)
           : Promise.resolve(null);
       return serial(async () => {

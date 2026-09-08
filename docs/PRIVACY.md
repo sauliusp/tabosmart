@@ -8,7 +8,7 @@ Tabosmart reviews open tabs and available browsing history to suggest ways to or
 
 ## When processing starts
 
-Chrome grants the required tabs, tabGroups, storage, alarms and history permissions through its normal installation or update process. On a fresh installation without stored Tabosmart state, local tab observation and history analysis start automatically. The workspace shows a nonblocking explanation of this processing. There is no additional onboarding or optional-history permission prompt.
+Chrome grants the required tabs, tabGroups, storage, alarms, history and favicon permissions through its normal installation or update process. On a fresh installation without stored Tabosmart state, local tab observation and history analysis start automatically. The workspace shows a nonblocking explanation of this processing. There is no additional onboarding or optional-history permission prompt.
 
 Existing paused or erased states remain paused. Settings & privacy lets you pause observation, turn history insights off, turn optional AI off, or erase Tabosmart data. Dismissing the informational disclosure does not change those settings. Chrome controls whether an installation or update requires another browser permission notice.
 
@@ -68,7 +68,9 @@ After restart, current tab identities and ages begin fresh. An unambiguous exact
 
 Dismissal fingerprints remain until erasure or the 1,500-entry limit. Exact-URL protections apply to every matching copy until removed or erased. Shelf and recovery each hold up to 100 batches and 1,000 URLs until forgotten, erased or uninstalled. A full shelf/recovery list causes a corresponding new operation to be refused rather than silently losing recovery.
 
-**Erase Tabosmart data** clears its local tab records, history index and checkpoints, shelf, recovery, protections, dismissals, opening/usage/grouping-choice context and workspace-owned AI caches/pending work. Observation stays off and history insights are disabled until you choose to resume them. Erasure does not close open tabs, undo native groups, delete Chrome's history or remove its model. Uninstalling removes extension storage. The fresh default AI preference after reset does not restart observation or create a model.
+Serialized local records have an 8 MiB budget, below Chrome's local-storage quota. Saved links, Recovery and protected URLs share a 4 MiB growth limit; long URLs can reach it before the entry-count limits. Existing saved or protected URLs are never automatically evicted to make room. New additions are refused when the limit is reached. Disposable observation, URL-use, restart, pair, activation and dismissal maps can be pruned earlier under byte limits, retaining recent evidence first. Large cached views may stay only in memory and are rebuilt after a worker restart.
+
+**Erase Tabosmart data** clears its local tab records, history index and checkpoints, shelf, recovery, protections, dismissals, opening/usage/grouping-choice context and workspace-owned AI caches/pending work. Observation stays off and history insights are disabled until you choose to resume them. Local-record erasure is persisted independently of history-index cleanup; if that cleanup fails, the interface reports it and you can retry erasure. Erasure does not close open tabs, undo native groups, delete Chrome's history or remove its model. Uninstalling removes extension storage. The fresh default AI preference after reset does not restart observation or create a model.
 
 Recovery only reopens stored URLs. It cannot restore unsaved edits, forms, login state or exact page contents. Anyone with access to an unlocked browser profile may be able to inspect locally stored information.
 

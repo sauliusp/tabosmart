@@ -101,3 +101,9 @@ The current commands, counts and hashes are in [QA](QA.md) and [the final source
 ## Installation guide and favicons in 1.5.0
 
 `installation.mjs` handles only fresh `onInstalled` events and opens the bundled welcome page once, coalescing concurrent events and persisting completion after a tab exists. Updates and browser startup do not open it. The workspace sidebar can reopen it manually. `favicons.mjs` constructs only Chrome profile-local `_favicon` URLs; unavailable icons use a neutral fallback. No external favicon service or website host permission is used.
+
+## Failure handling and storage budgets
+
+Committed action results survive a failed display refresh and carry a separate refresh warning. A failed close-status write stops further closes while preserving recovery URLs saved before the action. Failed saved-list mutations roll back their in-memory entries for retry. Erasure persists cleared local state before attempting history-index cleanup, with a visible partial-cleanup warning and retry support.
+
+`storage-budget.mjs` measures UTF-8 serialized size. Disposable maps use 512 KiB budgets; persisted cached views use at most 1 MiB. The total record budget is 8 MiB. Saved/recovery/protected user data has a 4 MiB growth limit and is never silently evicted. Legacy oversized saved data remains available to removal and erase controls.

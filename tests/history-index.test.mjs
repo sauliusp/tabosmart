@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createHistoryIndex,
+  createHistoryStore,
   historyKey,
   summarizeVisits,
 } from "../extension/history-index.mjs";
@@ -809,4 +810,37 @@ test("automatic reindex after a browser deletion still allows an enabled error r
     await f.store.get(await historyKey(rows[0].item.url)),
     undefined,
   );
+});
+
+test("a transient IndexedDB open failure does not poison later erasure retries", async () => {
+  let attempts = 0;
+  const indexedDB = {
+    open() {
+      const request = {};
+      queueMicrotask(() => {
+        if (++attempts === 1) {
+          request.error = new Error("Temporary database failure");
+          request.onerror();
+        } else {
+          request.result = {
+            transaction() {
+              const tx = {
+                objectStore() {
+                  return { clear() {} };
+                },
+              };
+              queueMicrotask(() => tx.oncomplete());
+              return tx;
+            },
+          };
+          request.onsuccess();
+        }
+      });
+      return request;
+    },
+  };
+  const store = createHistoryStore(indexedDB);
+  await assert.rejects(store.clear(), /Temporary database failure/);
+  await store.clear();
+  assert.equal(attempts, 2);
 });

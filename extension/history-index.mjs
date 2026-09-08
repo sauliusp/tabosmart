@@ -27,6 +27,9 @@ export function createHistoryStore(indexedDB = globalThis.indexedDB) {
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
+      }).catch((error) => {
+        opening = null;
+        throw error;
       });
     return opening;
   }
@@ -449,7 +452,19 @@ export function createHistoryIndex(
     timer = null;
     if (erase) {
       await writes.catch(() => {});
-      await store.clear();
+      try {
+        await store.clear();
+      } catch (error) {
+        status = {
+          ...status,
+          state: "error",
+          coverage: "partial",
+          detail:
+            "The local history index could not be erased. Try erasing local data again.",
+        };
+        emit();
+        throw error;
+      }
       meta = null;
       loaded = true;
       status = {
