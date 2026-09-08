@@ -692,6 +692,9 @@ export function createBackend(
         state = previousState;
         throw error;
       }
+      // Publish committed preferences before slower, unrelated maintenance.
+      // Other workspaces must stop observation or AI as soon as this save lands.
+      notify();
       if (!state.settings.enabled && timer !== null) {
         clearTimer(timer);
         timer = null;

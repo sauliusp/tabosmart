@@ -53,6 +53,7 @@ const main = $("#main"),
   dialog = $("#review-dialog");
 const enhancedReasons = new Map();
 let enhancementRun = false,
+  enhancementController = null,
   setupProgress = null,
   aiWorkEpoch = 0;
 let data = null,
@@ -113,6 +114,7 @@ async function api(type, args = {}) {
 }
 function stopUIAI(erase = false) {
   aiWorkEpoch++;
+  stopEnhancement();
   aiStatusWatcher.stop();
   if (erase) proactiveDiscovery.reset();
   else proactiveDiscovery.stop();
@@ -494,12 +496,14 @@ function renderSettings() {
       )}</select></label></div><p class="small">Initial suggestions work without AI. Chrome’s naming model currently supports English, German, French, Spanish and Japanese. Other languages keep useful metadata names without another download.</p></section><section class="settings-section"><h2>Local AI <span class="status-pill">OPTIONAL</span></h2><p>Enabled by default for new workspaces. When the model is ready, AI can find more shared tasks across websites and suggest group names from short tab metadata. Initial suggestions appear first. Further AI review continues automatically while this view is active. You review every inferred relationship before grouping. Supported Chrome devices may need an initial model download. This metadata is processed on this device, with no page reading or cloud fallback.</p>${capabilityRow()}${aiRequestNotes()}<p class="small">Group names follow your naming-language choice where Chrome supports the input and output. The interface and explanations currently use English. Explanations appear immediately from measured rules. AI can choose among verified phrasings of the same facts. It never changes the evidence or approves an action.</p><details class="local-ai-help"><summary>Why might local AI be unavailable?</summary><p>Chrome checks browser, device, language and model requirements. “Unavailable” does not tell Tabosmart the exact cause. Setup may need a model download; an error means an attempt did not finish. Your suggestions, names and complete explanations still work.</p><a href="https://developer.chrome.com/docs/ai/get-started" target="_blank" rel="noreferrer">Chrome requirements & setup ${icon("external")}</a><a href="https://developer.chrome.com/docs/ai/prompt-api" target="_blank" rel="noreferrer">Chrome local AI documentation ${icon("external")}</a></details></section><section class="settings-section"><h2>A space of your own.</h2><div class="privacy-copy"><p>Tabosmart stores open-tab titles and URLs, recorded URL use, protected URLs, dismissed suggestions, and saved or recoverable URLs in this Chrome profile. It also keeps bounded opening relationships, including exact source URLs, for up to one day, recorded browsing periods for up to 30 days, and confirmed grouping choices for up to 90 days. These help suggest groups locally; opening the browser does not count as opening related tabs together. URL-use history can include closed pages, is limited to 2,000 URLs, and expires after 90 days unseen when Tabosmart next processes local records. It also analyzes browser history available through Chrome’s history API when history insights are on. It stores hashed URL identifiers and aggregate visit counts and recency in this profile, without retaining history titles or full visit lists. Hashes are not anonymous or encrypted. It does not read page content or bookmarks, and sends no browsing data to a server. There are no analytics, accounts or remote fonts.</p><p>Data is local to this profile, not an encrypted vault or a backup. Anyone with access to the profile may access it. Uninstalling the extension removes its local storage.</p><p>Recovery reopens URLs. It cannot restore unsaved page or form state. Review important work before closing it.</p></div><div class="setting-row"><div><strong>Erase Tabosmart data</strong><p>Clear saved URLs, recovery, URL-use history, the browser-history index, opening context, learned grouping choices, activity, protection and dismissal choices. Observation stops. Open browser tabs stay open.</p></div><button class="button secondary" id="clear-data">Erase local data</button></div></section>`;
 }
 function navigate(next) {
+  stopEnhancement();
   view = next;
   render();
   main.focus({ preventScroll: true });
   window.scrollTo(0, 0);
 }
 function openReview(tabs, suggestion = null) {
+  stopEnhancement();
   review = {
     tabs,
     suggestion,
@@ -1034,6 +1038,9 @@ function reasonFor(s) {
   const value = enhancedReasons.get(s.id);
   return value?.reason === s.reason ? value.text : s.reason;
 }
+function stopEnhancement() {
+  enhancementController?.abort();
+}
 async function enhanceVisibleReasons() {
   if (
     enhancementRun ||
@@ -1046,6 +1053,8 @@ async function enhanceVisibleReasons() {
   )
     return;
   enhancementRun = true;
+  const controller = new AbortController();
+  enhancementController = controller;
   const epoch = aiWorkEpoch;
   try {
     for (const suggestion of data.suggestions.slice(0, 5)) {
@@ -1059,8 +1068,10 @@ async function enhanceVisibleReasons() {
         break;
       if (enhancedReasons.get(suggestion.id)?.reason === suggestion.reason)
         continue;
-      const text = await enhanceExplanation(suggestion);
-      if (epoch !== aiWorkEpoch) break;
+      const text = await enhanceExplanation(suggestion, {
+        signal: controller.signal,
+      });
+      if (epoch !== aiWorkEpoch || controller.signal.aborted) break;
       enhancedReasons.set(suggestion.id, {
         reason: suggestion.reason,
         text: text || suggestion.reason,
@@ -1080,6 +1091,7 @@ async function enhanceVisibleReasons() {
     }
   } finally {
     enhancementRun = false;
+    if (enhancementController === controller) enhancementController = null;
     if (epoch === aiWorkEpoch) await refreshAI();
   }
 }
@@ -1513,11 +1525,13 @@ window.addEventListener("focus", () => {
   void refreshAI();
 });
 document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopEnhancement();
   void syncProactiveNames();
   if (!document.hidden) void refreshAI();
 });
 window.addEventListener("pagehide", () => {
   leaving = true;
+  stopEnhancement();
   aiWorkEpoch++;
   aiStatusWatcher.stop();
   proactiveNames.stop();

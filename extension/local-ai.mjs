@@ -786,7 +786,8 @@ export function discoverGroups(
  * The caller renders suggestion.reason first and may replace it after this resolves.
  * At most five inference attempts per interface lifetime (or explicit setup/retry).
  */
-export function enhanceExplanation(suggestion) {
+export function enhanceExplanation(suggestion, { signal } = {}) {
+  if (signal?.aborted) return Promise.resolve(null);
   const reason = suggestion?.reason;
   const supplied = suggestion?.explanationVariants;
   if (
@@ -812,15 +813,22 @@ export function enhanceExplanation(suggestion) {
   const key = JSON.stringify([suggestion.id || "", reason, candidates]);
   if (explanationCache.has(key))
     return Promise.resolve(explanationCache.get(key));
-  if (explanationPending.has(key)) return explanationPending.get(key);
+  const existing = explanationPending.get(key);
+  if (existing && !existing.signal?.aborted) return existing.promise;
   const epoch = cancellationEpoch;
   const generation = dataEpoch;
   const task = enqueueInference(async () => {
-    if (epoch !== cancellationEpoch || explanationRequests >= 5) return null;
+    if (
+      epoch !== cancellationEpoch ||
+      signal?.aborted ||
+      explanationRequests >= 5
+    )
+      return null;
     const request = beginRequest("explanations");
     try {
-      await requireReady("explanations");
-      if (epoch !== cancellationEpoch) return null;
+      await bounded(requireReady("explanations"), 5_000, signal);
+      if (epoch !== cancellationEpoch || signal?.aborted)
+        throw new LocalAIError("cancelled", "Local AI was stopped.");
       explanationRequests++;
       const choices = candidates.map((text, id) => ({ id, text }));
       const result = await withSession(
@@ -831,8 +839,13 @@ export function enhanceExplanation(suggestion) {
             { signal },
           ),
         15_000,
+        undefined,
+        false,
+        null,
+        signal,
       );
-      if (epoch !== cancellationEpoch) return null;
+      if (epoch !== cancellationEpoch || signal?.aborted)
+        throw new LocalAIError("cancelled", "Local AI was stopped.");
       const answer = typeof result === "string" ? result.trim() : "";
       if (!/^[0-3]$/.test(answer) || Number(answer) >= candidates.length) {
         finishRequest(
@@ -852,16 +865,17 @@ export function enhanceExplanation(suggestion) {
     }
   })
     .then((result) => {
-      if (epoch !== cancellationEpoch) return null;
+      if (epoch !== cancellationEpoch || signal?.aborted) return null;
       explanationCache.set(key, result);
       if (explanationCache.size > 128)
         explanationCache.delete(explanationCache.keys().next().value);
       return result;
     })
     .finally(() => {
-      if (explanationPending.get(key) === task) explanationPending.delete(key);
+      if (explanationPending.get(key)?.promise === task)
+        explanationPending.delete(key);
     });
-  explanationPending.set(key, task);
+  explanationPending.set(key, { promise: task, signal });
   return task;
 }
 

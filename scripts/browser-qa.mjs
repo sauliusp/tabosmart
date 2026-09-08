@@ -198,6 +198,63 @@ try {
     path: path.join(root, "qa/screenshots/populated.png"),
   });
   const group = snap.suggestions.find((s) => s.type === "group");
+  // Use a separate workspace with a held model stub to exercise UI priority.
+  // This is cancellation QA, not evidence of real on-device inference.
+  const wordingWorkspace = await browser.newPage();
+  await wordingWorkspace.addInitScript(() => {
+    window.qaWordingStarted = false;
+    window.qaWordingAborted = false;
+    window.qaNameRequests = 0;
+    Object.defineProperty(globalThis, "LanguageModel", {
+      configurable: true,
+      value: {
+        availability: async () => "available",
+        async create() {
+          return {
+            prompt(text, { signal }) {
+              if (text.includes("UNTRUSTED_CANDIDATES_JSON")) {
+                window.qaWordingStarted = true;
+                signal.addEventListener(
+                  "abort",
+                  () => {
+                    window.qaWordingAborted = true;
+                  },
+                  { once: true },
+                );
+                return new Promise(() => {});
+              }
+              if (text.includes("UNTRUSTED_DISCOVERY_METADATA_JSON"))
+                return Promise.resolve('{"groups":[],"hints":[]}');
+              window.qaNameRequests++;
+              return Promise.resolve("Garden studio");
+            },
+            destroy() {},
+          };
+        },
+      },
+    });
+  });
+  await wordingWorkspace.goto(`chrome-extension://${id}/index.html`);
+  await wordingWorkspace.waitForFunction(() => window.qaWordingStarted);
+  await wordingWorkspace.locator(`[data-review="${group.id}"]`).click();
+  await wordingWorkspace.waitForFunction(() => window.qaWordingAborted, null, {
+    timeout: 2000,
+  });
+  const namesBefore = await wordingWorkspace.evaluate(
+    () => window.qaNameRequests,
+  );
+  await wordingWorkspace.locator("#ai-name").click();
+  await wordingWorkspace.waitForFunction(
+    (before) =>
+      window.qaNameRequests > before &&
+      document.querySelector("#ai-name").getAttribute("aria-busy") === "false",
+    namesBefore,
+    { timeout: 2000 },
+  );
+  check(
+    "Opening a review cancels simulated wording so manual naming finishes without its watchdog delay",
+  );
+  await wordingWorkspace.close();
   await page.locator(`[data-review="${group.id}"]`).click();
   check(
     "Group review uses website favicons",

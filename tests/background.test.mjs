@@ -2472,6 +2472,56 @@ test("committed opt-outs remain successful when post-save background scheduling 
   }
 });
 
+test("committed opt-outs notify cached readers before background maintenance settles", async () => {
+  for (const stage of ["alarms", "history-permission", "history-erasure"]) {
+    const f = fixture();
+    f.api.history = { search: async () => [], getVisits: async () => [] };
+    f.api.permissions = { contains: async () => false };
+    const store = {
+      getMeta: async () => null,
+      count: async () => 0,
+      clear: async () => {},
+    };
+    const b = f.backend({ historyOptions: { store } });
+    await b.handle({ type: "snapshot" });
+    let release, entered;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const waiting = new Promise((resolve) => {
+      entered = resolve;
+    });
+    const hold = async () => {
+      entered();
+      await gate;
+      return false;
+    };
+    const patch =
+      stage === "alarms"
+        ? { enabled: false }
+        : stage === "history-permission"
+          ? { aiEnabled: false }
+          : { historyEnabled: false };
+    if (stage === "alarms") f.api.alarms.clear = hold;
+    else if (stage === "history-permission") f.api.permissions.contains = hold;
+    else store.clear = hold;
+    f.calls.length = 0;
+    const saving = b.handle({ type: "settings", patch });
+    await waiting;
+    assert(
+      f.calls.some(([type]) => type === "notify"),
+      stage,
+    );
+    const visible = await b.handle({ type: "cachedSnapshot" });
+    for (const [key, value] of Object.entries(patch)) {
+      assert.equal(visible.settings[key], value, stage);
+      assert.equal(f.local[STORAGE_KEY].settings[key], value, stage);
+    }
+    release();
+    assert.equal((await saving).ok, true, stage);
+  }
+});
+
 test("popup tabs are excluded from inventory, reviewed actions, and restore destinations", async () => {
   const f = fixture([
       tab(8, { windowId: 8, windowType: "popup" }),

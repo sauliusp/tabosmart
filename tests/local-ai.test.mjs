@@ -1845,3 +1845,73 @@ test("aborting discovery during availability releases the shared queue for manua
   assert.notEqual(ai.getLocalAIActivity().discovery, true);
   availability.resolve("available");
 });
+
+test("aborting automatic wording releases manual naming during availability or prompting", async () => {
+  for (const stage of ["availability", "prompt"]) {
+    const held = deferred();
+    let checks = 0,
+      created = 0,
+      destroyed = 0;
+    set("LanguageModel", {
+      availability: async () =>
+        ++checks === 1 && stage === "availability" ? held.promise : "available",
+      async create() {
+        created++;
+        return {
+          prompt: (text) =>
+            text.includes("UNTRUSTED_CANDIDATES_JSON")
+              ? held.promise
+              : Promise.resolve("Mercury research"),
+          destroy() {
+            destroyed++;
+          },
+        };
+      },
+    });
+    const ai = await fresh(),
+      controller = new AbortController();
+    const old = ai.enhanceExplanation(suggestion(), {
+      signal: controller.signal,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(ai.getLocalAIActivity().wording, true, stage);
+    controller.abort();
+    const manual = ai.suggestName([
+      { title: "Mercury overview" },
+      { title: "Mercury API" },
+    ]);
+    assert.equal(await old, null, stage);
+    assert.equal(await manual, "Mercury research", stage);
+    assert.equal(ai.getLocalAIActivity().wording, false, stage);
+    assert.equal(created, stage === "prompt" ? 2 : 1, stage);
+    assert.equal(destroyed, created, stage);
+    held.resolve(stage === "availability" ? "available" : "1");
+  }
+});
+
+test("same-input wording retry after per-view cancellation does not reuse or cache the old request", async () => {
+  const held = deferred();
+  let created = 0;
+  set("LanguageModel", {
+    availability: async () => "available",
+    async create() {
+      const index = created++;
+      return { prompt: () => (index === 0 ? held.promise : "1"), destroy() {} };
+    },
+  });
+  const ai = await fresh(),
+    controller = new AbortController(),
+    input = suggestion();
+  const old = ai.enhanceExplanation(input, { signal: controller.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  const replacement = ai.enhanceExplanation(input);
+  assert.notEqual(replacement, old);
+  assert.equal(await old, null);
+  assert.equal(await replacement, input.explanationVariants[1]);
+  held.resolve("0");
+  assert.equal(
+    await ai.enhanceExplanation(input),
+    input.explanationVariants[1],
+  );
+});
