@@ -335,11 +335,18 @@ try {
     const send = chrome.runtime.sendMessage.bind(chrome.runtime);
     let epoch = (await send({ type: "cachedSnapshot" })).snapshotEpoch;
     let lowered = false;
+    let cleanupFailed = false;
     window.qaOriginalSend = send;
     window.qaRaiseRevision = () => {
       lowered = false;
     };
     chrome.runtime.sendMessage = async (message, ...args) => {
+      if (
+        message.type === "settings" &&
+        message.patch?.historyEnabled === false
+      )
+        cleanupFailed = true;
+      if (message.type === "retryHistory") cleanupFailed = false;
       if (
         message.type === "settings" &&
         Object.values(message.patch || {}).includes(false)
@@ -351,6 +358,15 @@ try {
       if (result?.tabs) {
         result.snapshotEpoch = epoch;
         result.snapshotRevision = lowered ? 0 : 1000000;
+        if (cleanupFailed) {
+          result.history = { ...result.history, state: "error" };
+          if (message.type === "settings")
+            result.action = {
+              type: "settings",
+              warning:
+                "History insights are off, but the local history index could not be erased. Retry erasing the index in Settings & privacy.",
+            };
+        }
       }
       return result;
     };
@@ -366,6 +382,30 @@ try {
     await page.getByRole("button", { name: off, exact: true }).click();
     await page.getByRole("button", { name: on, exact: true }).waitFor();
     check(`${off} accepts a committed opt-out from a newer worker generation`);
+    if (off === "Turn off history insights") {
+      const retry = page.getByRole("button", {
+        name: "Retry erasing index",
+        exact: true,
+      });
+      await retry.waitFor();
+      check(
+        "Incomplete history erasure stays visible while history is off",
+        await page
+          .getByText(
+            "History insights are off, but the local history index could not be erased. No history processing is running.",
+            { exact: true },
+          )
+          .isVisible(),
+      );
+      await retry.click();
+      await retry.waitFor({ state: "hidden" });
+      check(
+        "History erasure retry clears the warning without enabling history",
+        await page
+          .getByRole("button", { name: "Use history insights", exact: true })
+          .isVisible(),
+      );
+    }
   }
   await page.evaluate(() => window.qaRaiseRevision());
   await page

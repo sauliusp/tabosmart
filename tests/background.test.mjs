@@ -92,7 +92,7 @@ function fixture(initial = [tab(1), tab(2), tab(3)], local = {}, session = {}) {
         if (failures.pinOnGet === id)
           tabs.find((t) => t.id === id).pinned = true;
         const item = tabs.find((t) => t.id === id);
-        if (!item) throw new Error("No tab");
+        if (!item) throw new Error(`No tab with id: ${id}.`);
         return copy(item);
       },
       async remove(id) {
@@ -2522,4 +2522,184 @@ test("popup tabs are excluded from inventory, reviewed actions, and restore dest
   });
   assert.equal(grouped.ok, false);
   assert.equal(f.calls.filter((c) => c[0] === "group").length, 0);
+});
+
+test("failed local erasure preserves user records, preferences, and queued work until a successful retry", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const snap = await b.handle({ type: "snapshot" });
+  await b.handle({ type: "save", tabIds: [1], expectedTabs: snap.tabs });
+  await b.handle({
+    type: "close",
+    tabIds: [2],
+    expectedTabs: snap.tabs,
+    confirmed: true,
+  });
+  await b.handle({
+    type: "protect",
+    tabIds: [3],
+    expectedTabs: snap.tabs,
+    protected: true,
+  });
+  await b.schedule();
+  const before = copy(await b.handle({ type: "cachedSnapshot" }));
+  const protections = copy(f.local[STORAGE_KEY].protectedUrls);
+  const pendingTimers = [...f.timers.keys()];
+  f.failures.storage = true;
+  assert.equal((await b.handle({ type: "clearData" })).ok, false);
+  const after = await b.handle({ type: "cachedSnapshot" });
+  for (const key of ["saved", "recovery", "settings", "tabs", "consentAt"])
+    assert.deepEqual(after[key], before[key]);
+  assert.deepEqual([...f.timers.keys()], pendingTimers);
+  f.failures.storage = false;
+  await b.handle({ type: "settings", patch: { inactivityDays: 14 } });
+  assert.deepEqual(f.local[STORAGE_KEY].saved, before.saved);
+  assert.deepEqual(f.local[STORAGE_KEY].recovery, before.recovery);
+  assert.deepEqual(f.local[STORAGE_KEY].protectedUrls, protections);
+  const retried = await b.handle({ type: "clearData" });
+  assert.equal(retried.ok, true);
+  assert.deepEqual(retried.saved, []);
+  assert.deepEqual(retried.recovery, []);
+  assert.deepEqual(f.local[STORAGE_KEY].protectedUrls, {});
+  assert.equal(retried.settings.enabled, false);
+});
+
+test("history opt-out reports incomplete erasure and retries deletion without enabling history", async () => {
+  const f = fixture();
+  let failed = false,
+    retained = true,
+    clears = 0;
+  const store = {
+    async getMeta() {},
+    async count() {
+      return retained ? 1 : 0;
+    },
+    async clear() {
+      clears++;
+      if (failed) throw new Error("Database unavailable");
+      retained = false;
+    },
+  };
+  const b = f.backend({ historyOptions: { store } });
+  await b.handle({ type: "snapshot" });
+  retained = true;
+  failed = true;
+  const result = await b.handle({
+    type: "settings",
+    patch: { historyEnabled: false },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.settings.historyEnabled, false);
+  assert.equal(f.local[STORAGE_KEY].settings.historyEnabled, false);
+  assert.equal(retained, true);
+  assert.equal(result.history.state, "error");
+  assert.match(result.action.warning, /index could not be erased/);
+  assert.equal((await b.handle({ type: "retryHistory" })).ok, false);
+  assert.equal(
+    (await b.handle({ type: "cachedSnapshot" })).history.state,
+    "error",
+  );
+  failed = false;
+  const retried = await b.handle({ type: "retryHistory" });
+  assert.equal(retried.ok, true);
+  assert.equal(retried.history.state, "off");
+  assert.equal(retried.settings.historyEnabled, false);
+  assert.equal(retained, false);
+  assert(clears >= 3);
+});
+
+test("failed dismissal stays visible and cannot commit in a later unrelated write", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  const snap = await b.handle({ type: "snapshot" });
+  const suggestion = snap.suggestions[0];
+  const set = f.api.storage.local.set;
+  f.api.storage.local.set = async (value) => {
+    if (value[STORAGE_KEY].dismissed[suggestion.fingerprint])
+      throw new Error("Temporary dismissal failure");
+    return set(value);
+  };
+  assert.equal(
+    (await b.handle({ type: "dismiss", id: suggestion.id })).ok,
+    false,
+  );
+  f.api.storage.local.set = set;
+  const after = await b.handle({
+    type: "settings",
+    patch: { inactivityDays: 14 },
+  });
+  assert(after.suggestions.some((s) => s.id === suggestion.id));
+  assert.equal(
+    f.local[STORAGE_KEY].dismissed[suggestion.fingerprint],
+    undefined,
+  );
+  assert.equal(
+    (await b.handle({ type: "dismiss", id: suggestion.id })).ok,
+    true,
+  );
+  assert(
+    !(await b.handle({ type: "snapshot" })).suggestions.some(
+      (s) => s.id === suggestion.id,
+    ),
+  );
+});
+
+test("a completed scan stays successful when its redundant alarm cannot be cleared", async () => {
+  const f = fixture(),
+    b = await enabled(f);
+  f.mutate((tabs) => tabs.push(tab(4)));
+  f.api.alarms.clear = async () => {
+    throw new Error("Alarm unavailable");
+  };
+  const result = await b.handle({ type: "snapshot" });
+  assert.equal(result.ok, true);
+  assert.equal(result.evaluation.state, "idle");
+  assert.match(result.evaluation.warning, /check completed/);
+  assert.equal(result.tabs.length, 4);
+  assert.equal(f.local[STORAGE_KEY].cached.tabs.length, 4);
+  assert.equal(f.local[STORAGE_KEY].evaluation.state, "idle");
+});
+
+test("an uncertain post-close lookup never counts a retained tab as closed and recovery reconciles it", async () => {
+  for (const retained of [true, false]) {
+    const f = fixture(),
+      b = await enabled(f);
+    const snap = await b.handle({ type: "snapshot" });
+    if (retained) f.failures.kept.add(1);
+    const remove = f.api.tabs.remove,
+      get = f.api.tabs.get;
+    let removed = false;
+    f.api.tabs.remove = async (id) => {
+      await remove(id);
+      removed = true;
+    };
+    f.api.tabs.get = async (id) => {
+      if (removed) throw new Error("Temporary tab lookup failure");
+      return get(id);
+    };
+    const result = await b.handle({
+      type: "close",
+      tabIds: [1],
+      expectedTabs: snap.tabs,
+      confirmed: true,
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.action.closed, []);
+    assert.equal(result.action.failed[0].tabId, 1);
+    assert.match(result.action.warning, /could not confirm/);
+    assert.equal(result.recovery[0].tabs[0].status, "pending-close");
+    assert.equal(f.local[STORAGE_KEY].recovery[0].tabs[0].closedAt, undefined);
+    f.api.tabs.get = get;
+    const restore = await b.handle({
+      type: "restore",
+      kind: "recovery",
+      id: result.action.id,
+    });
+    assert.equal(restore.ok, true);
+    assert.equal(restore.action.count, retained ? 0 : 1);
+    assert.equal(
+      f.calls.filter((c) => c[0] === "create").length,
+      retained ? 0 : 1,
+    );
+  }
 });

@@ -270,7 +270,12 @@ export function createBackend(
       };
       enrichedSnapshot = withDiscovery(result, tabs);
       await persist();
-      await api.alarms?.clear(EVALUATION_ALARM);
+      try {
+        await api.alarms?.clear(EVALUATION_ALARM);
+      } catch {
+        state.evaluation.warning =
+          "The tab check completed, but Chrome could not clear its old scheduled check.";
+      }
       notify();
       return tabs;
     } catch (error) {
@@ -579,8 +584,14 @@ export function createBackend(
           "This suggestion has changed. Refresh to see the latest list.",
           "STALE",
         );
-      state.dismissed[suggestion.fingerprint] = now();
-      await persist();
+      const previousDismissed = state.dismissed;
+      state.dismissed = { ...state.dismissed, [suggestion.fingerprint]: now() };
+      try {
+        await persist();
+      } catch (error) {
+        state.dismissed = previousDismissed;
+        throw error;
+      }
     } else if (type === "protect") {
       const tabs = await selected(message, "protect", rawTabs);
       if (typeof message.protected !== "boolean")
@@ -658,7 +669,9 @@ export function createBackend(
         await configureHistory();
       } catch {
         warnings.push(
-          "Your preferences were saved, but history maintenance could not finish. Check the history status or try Erase local data again.",
+          state.settings.historyEnabled
+            ? "Your preferences were saved, but history maintenance could not finish. Check the history status or try Erase local data again."
+            : "History insights are off, but the local history index could not be erased. Retry erasing the index in Settings & privacy.",
         );
       }
       notify();
@@ -671,21 +684,27 @@ export function createBackend(
       await persist();
       return cachedSnapshot();
     } else if (type === "retryHistory") {
-      if (state.settings.enabled && state.settings.historyEnabled)
-        await history.retry();
+      if (!state.settings.historyEnabled) await configureHistory();
+      else if (state.settings.enabled) await history.retry();
       return cachedSnapshot();
     } else if (type === "clearData") {
-      if (timer !== null) {
-        clearTimer(timer);
-        timer = null;
-      }
+      const previousState = state;
       const sessionId = state.sessionId;
       state = createState(now());
       state.settings.historyEnabled = false;
       state.installDisclosure = false;
-      historyFacts = {};
       state.sessionId = sessionId;
-      await persist();
+      try {
+        await persist();
+      } catch (error) {
+        state = previousState;
+        throw error;
+      }
+      if (timer !== null) {
+        clearTimer(timer);
+        timer = null;
+      }
+      historyFacts = {};
       let warning;
       if (api.history || globalThis.indexedDB || historyOptions.store) {
         try {
@@ -854,8 +873,14 @@ export function createBackend(
           try {
             await api.tabs.get(expected.id);
             stillOpen = true;
-          } catch {
-            /* removed */
+          } catch (error) {
+            // Chromium's definitive missing-tab error, not an arbitrary API
+            // lookup failure, is evidence that remove actually closed the tab.
+            if (error?.message !== `No tab with id: ${expected.id}.`)
+              throw fault(
+                "Chrome could not confirm whether this tab closed. Check your tabs before reopening its saved URL.",
+                "CLOSE_UNCERTAIN",
+              );
           }
           if (stillOpen)
             throw fault(
@@ -865,9 +890,13 @@ export function createBackend(
           item.closedAt = now();
           closed.push(expected.id);
         } catch (error) {
-          item.status = "not-closed";
+          item.status =
+            error.code === "CLOSE_UNCERTAIN" ? "pending-close" : "not-closed";
           item.error = error.message;
           failed.push({ tabId: expected.id, error: error.message });
+          if (error.code === "CLOSE_UNCERTAIN")
+            warning =
+              "Chrome could not confirm every closure. Check your open tabs; the URLs remain in Recovery.";
         }
         try {
           await persist();

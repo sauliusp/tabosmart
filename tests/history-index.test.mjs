@@ -187,6 +187,36 @@ function fixture(rows = [], options = {}) {
 const enable = (index) =>
   index.configure({ enabled: true, historyEnabled: true });
 
+test("disabling history propagates failed deletion and stays stopped until cleanup retry", async () => {
+  const f = fixture([item(1)]);
+  await enable(f.index);
+  await f.index.pump();
+  assert(f.store.records.size > 0);
+  const clear = f.store.clear;
+  f.store.clear = async () => {
+    throw new Error("Temporary deletion failure");
+  };
+  await assert.rejects(
+    f.index.configure({ enabled: true, historyEnabled: false }),
+    /Temporary deletion failure/,
+  );
+  assert.equal(f.index.snapshot().state, "error");
+  assert(f.store.records.size > 0);
+  assert(await f.store.getMeta());
+  const calls = copy(f.calls);
+  await f.index.pump();
+  assert.deepEqual(f.calls, calls);
+  assert.deepEqual(await f.index.facts([item(1).item.url]), {});
+  f.store.clear = clear;
+  const retried = await f.index.configure({
+    enabled: true,
+    historyEnabled: false,
+  });
+  assert.equal(retried.state, "off");
+  assert.equal(f.store.records.size, 0);
+  assert.equal(await f.store.getMeta(), undefined);
+});
+
 test("visit aggregates deduplicate browser IDs and separate returned visits from Chrome's total counter", () => {
   const visits = [
     { visitId: "old", visitTime: T - 40 * DAY },

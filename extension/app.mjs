@@ -809,6 +809,7 @@ function updateCheckStatus() {
   $("#check-status").title = e?.checkedAt
     ? `Last checked ${new Date(e.checkedAt).toLocaleTimeString()}`
     : "Suggestions reflect the current observed tabs.";
+  if (e?.warning) $("#check-status").title += ` ${e.warning}`;
 }
 function currentEvaluation() {
   if (
@@ -951,6 +952,8 @@ function disclosureMarkup() {
 }
 function historyStatusMarkup() {
   const h = data?.history;
+  if (!data?.settings.historyEnabled && h?.state === "error")
+    return `<p class="history-progress" role="status">${icon("history")}<span>History insights are off, but the local history index could not be erased. No history processing is running.</span><button class="text-button" id="retry-history">Retry erasing index</button></p>`;
   if (!data?.settings.historyEnabled || !data.settings.enabled) return "";
   let text;
   if (["indexing", "updating"].includes(h?.state))
@@ -1243,7 +1246,9 @@ document.addEventListener("click", async (event) => {
     await action(
       "retryHistory",
       {},
-      "History review requested. Tab suggestions remain available.",
+      data.settings.historyEnabled
+        ? "History review requested. Tab suggestions remain available."
+        : "The local history index was erased. History insights remain off.",
     );
     return;
   }

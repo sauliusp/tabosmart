@@ -538,6 +538,10 @@ export function createHistoryIndex(
   }
   return {
     configure: async (options) => {
+      // Disabling history performs deletion. Its caller must distinguish a
+      // committed opt-out from incomplete cleanup, including after stop's epoch
+      // change. stop() already records the error and prevents further work.
+      if (options.historyEnabled === false) return configure(options);
       const token = epoch;
       try {
         return await configure(options);
