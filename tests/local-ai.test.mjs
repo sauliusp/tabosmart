@@ -1760,3 +1760,57 @@ test("discovery watchdog releases activity and keeps real model availability sep
   assert.equal((await ai.getCapabilities()).names.state, "ready");
   answer.resolve(JSON.stringify({ groups: [discovered] }));
 });
+
+test("aborting one name destroys its session and an immediate identical retry can finish", async () => {
+  const oldResponse = deferred(),
+    events = [];
+  let created = 0;
+  set("LanguageModel", {
+    availability: async () => "available",
+    async create() {
+      const index = created++;
+      events.push(`create-${index}`);
+      return {
+        prompt: () => (index === 0 ? oldResponse.promise : "Mercury research"),
+        destroy: () => events.push(`destroy-${index}`),
+      };
+    },
+  });
+  const ai = await fresh(),
+    controller = new AbortController();
+  const titles = [{ title: "Mercury overview" }, { title: "Mercury API" }];
+  const old = ai.suggestName(titles, {}, { signal: controller.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(created, 1);
+  controller.abort();
+  const retried = ai.suggestName(titles);
+  assert.notEqual(retried, old);
+  assert.equal(await old, null);
+  assert.equal(await retried, "Mercury research");
+  assert.deepEqual(events, ["create-0", "destroy-0", "create-1", "destroy-1"]);
+  oldResponse.resolve("Mercury notes");
+});
+
+test("aborting a pending language check releases the inference queue without creating that session", async () => {
+  const waiting = deferred();
+  let checks = 0,
+    created = 0;
+  set("LanguageModel", {
+    availability: async () => (++checks === 2 ? waiting.promise : "available"),
+    async create() {
+      created++;
+      return { prompt: async () => "Mercury research", destroy() {} };
+    },
+  });
+  const ai = await fresh(),
+    controller = new AbortController();
+  const titles = [{ title: "Mercury overview" }, { title: "Mercury API" }];
+  const old = ai.suggestName(titles, {}, { signal: controller.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(checks, 2);
+  controller.abort();
+  assert.equal(await old, null);
+  assert.equal(await ai.suggestName(titles), "Mercury research");
+  assert.equal(created, 1);
+  waiting.resolve("available");
+});

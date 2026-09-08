@@ -111,10 +111,12 @@ export function createProactiveNames({
   function isCurrent(job) {
     return (
       job.epoch === epoch &&
+      !job.controller.signal.aborted &&
       canRun() &&
+      (!context.reviewing || context.reviewKey === job.key) &&
       (job.manual
         ? latestManual.get(job.id) === job.key
-        : proposals.get(job.id) === job.key)
+        : proposals.get(job.id) === job.key || context.reviewKey === job.key)
     );
   }
   function reportActivity() {
@@ -144,6 +146,12 @@ export function createProactiveNames({
     if (pending.get(job.key) === job) pending.delete(job.key);
     job.resolve(value);
   }
+  function cancelActive() {
+    if (!active) return;
+    if (!active.manual) attempted.delete(active.key);
+    active.controller.abort();
+    settle(active, null);
+  }
   function schedule() {
     if (scheduled || active) return;
     scheduled = true;
@@ -167,11 +175,18 @@ export function createProactiveNames({
       if (attempted.size > 128)
         attempted.delete(attempted.values().next().value);
       try {
-        const name = await generate(job.suggestion.tabs, {
-          signal: job.suggestion.signal,
-          proposedName: job.suggestion.proposedName,
-          namePreference: job.suggestion.namePreference,
-        });
+        const name = await Promise.race([
+          generate(
+            job.suggestion.tabs,
+            {
+              signal: job.suggestion.signal,
+              proposedName: job.suggestion.proposedName,
+              namePreference: job.suggestion.namePreference,
+            },
+            { signal: job.controller.signal },
+          ),
+          job.cancelled,
+        ]);
         if (
           !isCurrent(job) ||
           !validName(name) ||
@@ -218,6 +233,7 @@ export function createProactiveNames({
       if (manual) existing.manual = true;
       return existing.promise;
     }
+    if (manual && active && active.key !== key) cancelActive();
     if (!retry && cache.has(key)) return Promise.resolve({ ...cache.get(key) });
     if (!retry && attempted.has(key)) return Promise.resolve(null);
     if (!manual && automaticAttempts >= budget) return Promise.resolve(null);
@@ -248,7 +264,13 @@ export function createProactiveNames({
       epoch,
       resolve,
       promise,
+      controller: new AbortController(),
     };
+    job.cancelled = new Promise((done) =>
+      job.controller.signal.addEventListener("abort", () => done(null), {
+        once: true,
+      }),
+    );
     pending.set(key, job);
     if (manual) queue.unshift(job);
     else queue.push(job);
@@ -261,12 +283,7 @@ export function createProactiveNames({
     context = { ...context, enabled: false };
     proposals.clear();
     latestManual.clear();
-    if (active) {
-      // A visibility/opt-out interruption is not a completed failed attempt.
-      // Allow one new attempt on a later eligible sync, still under the budget.
-      if (!active.manual) attempted.delete(active.key);
-      settle(active, null);
-    }
+    cancelActive();
     for (const job of queue.splice(0)) settle(job, null);
     pending.clear();
     notifyIdle();
@@ -276,6 +293,8 @@ export function createProactiveNames({
       enabled: nextContext?.enabled === true,
       available: nextContext?.available === true,
       visible: nextContext?.visible === true,
+      reviewing: !!nextContext?.reviewProposal,
+      reviewKey: evidenceKeyFor(nextContext?.reviewProposal),
     };
     if (!next.enabled || !next.available || !next.visible) {
       stop();
@@ -291,7 +310,9 @@ export function createProactiveNames({
       proposals.set(String(suggestion.id || ""), key);
       eligible.push(suggestion);
     }
-    // Eject queued stale proposals promptly; an in-flight result is guarded.
+    // Keep an exact review job available for adoption, but release stale work
+    // immediately when the selected tabs or their evidence changes.
+    if (active && !isCurrent(active)) cancelActive();
     queue = queue.filter((job) => {
       if (isCurrent(job)) return true;
       settle(job, null);

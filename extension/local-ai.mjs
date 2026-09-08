@@ -307,9 +307,14 @@ export async function getCapabilities(onStatus) {
   return result;
 }
 
-function bounded(promise, milliseconds) {
+function bounded(promise, milliseconds, signal = null) {
   let timer;
+  let abort;
   const deadline = new Promise((_, reject) => {
+    abort = () =>
+      reject(new LocalAIError("cancelled", "Local AI was stopped."));
+    if (signal?.aborted) abort();
+    else signal?.addEventListener("abort", abort, { once: true });
     timer = setTimeout(
       () =>
         reject(
@@ -321,7 +326,10 @@ function bounded(promise, milliseconds) {
       milliseconds,
     );
   });
-  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+  return Promise.race([promise, deadline]).finally(() => {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  });
 }
 
 /** Calls create synchronously so setup keeps the click's user activation. */
@@ -334,10 +342,14 @@ function withSession(
   requestOptions = null,
   externalSignal = null,
 ) {
+  if (externalSignal?.aborted)
+    return Promise.reject(
+      new LocalAIError("cancelled", "Local AI was stopped."),
+    );
   const api = apiFor(kind);
   const controller = new AbortController();
   const abortExternal = () =>
-    controller.abort(new LocalAIError("cancelled", "Discovery was stopped."));
+    controller.abort(new LocalAIError("cancelled", "Local AI was stopped."));
   if (externalSignal?.aborted) abortExternal();
   else externalSignal?.addEventListener("abort", abortExternal, { once: true });
   activeControllers.add(controller);
@@ -581,7 +593,8 @@ function enqueueInference(work) {
 }
 
 /** Returns null whenever a safe, short local name is unavailable. Never downloads. */
-export function suggestName(tabs, context = {}) {
+export function suggestName(tabs, context = {}, { signal } = {}) {
+  if (signal?.aborted) return Promise.resolve(null);
   const epoch = cancellationEpoch;
   const generation = dataEpoch;
   const metadata = (Array.isArray(tabs) ? tabs : [])
@@ -619,21 +632,28 @@ export function suggestName(tabs, context = {}) {
       verifiedTopic: topicName || null,
     },
   });
-  if (pendingNames.has(key)) return pendingNames.get(key);
+  const existing = pendingNames.get(key);
+  if (existing && !existing.signal?.aborted) return existing.promise;
   const pending = enqueueInference(async () => {
-    if (epoch !== cancellationEpoch) return null;
+    if (epoch !== cancellationEpoch || signal?.aborted) return null;
     const request = beginRequest("names");
     try {
-      await requireReady("names");
+      await bounded(requireReady("names"), 15000, signal);
+      if (epoch !== cancellationEpoch || signal?.aborted)
+        throw new LocalAIError("cancelled", "Local AI was stopped.");
       if (
-        (await bounded(apiFor("names").availability(nameOptions), 15000)) !==
-        "available"
+        (await bounded(
+          apiFor("names").availability(nameOptions),
+          15000,
+          signal,
+        )) !== "available"
       )
         throw new LocalAIError(
           "unsupported-language",
           "Chrome cannot currently name this language. The metadata name remains available.",
         );
-      if (epoch !== cancellationEpoch) return null;
+      if (epoch !== cancellationEpoch || signal?.aborted)
+        throw new LocalAIError("cancelled", "Local AI was stopped.");
       const result = await withSession(
         "names",
         (session, signal) =>
@@ -645,8 +665,10 @@ export function suggestName(tabs, context = {}) {
         undefined,
         false,
         nameOptions,
+        signal,
       );
-      if (epoch !== cancellationEpoch) return null;
+      if (epoch !== cancellationEpoch || signal?.aborted)
+        throw new LocalAIError("cancelled", "Local AI was stopped.");
       const name = String(result)
         .trim()
         .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
@@ -675,9 +697,9 @@ export function suggestName(tabs, context = {}) {
       return null;
     }
   }).finally(() => {
-    if (pendingNames.get(key) === pending) pendingNames.delete(key);
+    if (pendingNames.get(key)?.promise === pending) pendingNames.delete(key);
   });
-  pendingNames.set(key, pending);
+  pendingNames.set(key, { promise: pending, signal });
   return pending;
 }
 

@@ -320,11 +320,46 @@ test("manual refinement adopts an exact pending automatic name after a review fr
   });
   void controller.sync([proposal()], enabled);
   await tick();
-  void controller.sync([], enabled);
+  void controller.sync([], { ...enabled, reviewProposal: proposal() });
   const manual = controller.request(proposal(), { retry: true });
   response.resolve("Mercury work");
   assert.equal((await manual).name, "Mercury work");
   assert.equal(calls, 1);
+});
+
+test("changing the reviewed selection releases stale automatic naming before its provider responds", async () => {
+  const response = deferred(),
+    signals = [],
+    changes = [];
+  const original = proposal();
+  original.tabs.push({
+    ...original.tabs[1],
+    id: 3,
+    title: "Mercury project notes",
+  });
+  const selected = { ...original, tabs: original.tabs.slice(0, 2) };
+  const controller = createProactiveNames({
+    generate: async (_tabs, _context, { signal }) => {
+      signals.push(signal);
+      return signals.length === 1 ? response.promise : "Mercury work";
+    },
+    onName: (result) => changes.push(result),
+  });
+  void controller.sync([original], enabled);
+  await tick();
+  void controller.sync([], { ...enabled, reviewProposal: original });
+  assert.equal(signals[0].aborted, false);
+  void controller.sync([], { ...enabled, reviewProposal: selected });
+  assert.equal(signals[0].aborted, true);
+  const manual = controller.request(selected, { retry: true });
+  await tick();
+  assert.equal(signals.length, 2);
+  assert.equal((await manual).name, "Mercury work");
+  response.resolve("Mercury reference");
+  await controller.whenIdle();
+  assert.equal(controller.getName(original), null);
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].evidenceKey, evidenceKeyFor(selected));
 });
 
 test("stop resolves request and queue waits promptly while a late provider is still pending", async () => {

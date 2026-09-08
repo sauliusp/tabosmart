@@ -377,6 +377,58 @@ try {
   await page.evaluate(() => {
     chrome.runtime.sendMessage = window.qaSettingsSend;
   });
+  // Hold delivery of an already committed response while another workspace
+  // opts out. The first workspace must drain the notification after settling.
+  const otherWorkspace = await browser.newPage();
+  await otherWorkspace.goto(`chrome-extension://${id}/index.html#settings`);
+  await otherWorkspace.locator("#toggle-ai").waitFor();
+  await page.bringToFront();
+  await page.evaluate(() => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    window.qaConcurrentSend = send;
+    let pending = true;
+    const gate = new Promise((resolve) => {
+      window.qaReleaseResponse = resolve;
+    });
+    chrome.runtime.sendMessage = async (message, ...args) => {
+      const result = await send(message, ...args);
+      if (pending && message.type === "settings") {
+        pending = false;
+        window.qaResponseHeld = true;
+        await gate;
+      }
+      return result;
+    };
+  });
+  await page.locator("#inactivity-days").selectOption("30");
+  await page.waitForFunction(() => window.qaResponseHeld === true);
+  const concurrentOptOut = await otherWorkspace.evaluate(() =>
+    chrome.runtime.sendMessage({
+      type: "settings",
+      patch: { aiEnabled: false },
+    }),
+  );
+  check(
+    "Second workspace commits AI opt-out while the first workspace is busy",
+    concurrentOptOut.ok,
+  );
+  await page.evaluate(() => window.qaReleaseResponse());
+  await page
+    .getByRole("button", { name: "Enable local AI", exact: true })
+    .waitFor();
+  check(
+    "Busy workspace receives another workspace's opt-out without a manual refresh",
+  );
+  await page.evaluate(() => {
+    chrome.runtime.sendMessage = window.qaConcurrentSend;
+  });
+  await otherWorkspace.close();
+  await page
+    .getByRole("button", { name: "Enable local AI", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Turn off local AI", exact: true })
+    .waitFor();
   // Each opt-out commits in a newer worker generation with a lower revision.
   await page.evaluate(async () => {
     const send = chrome.runtime.sendMessage.bind(chrome.runtime);

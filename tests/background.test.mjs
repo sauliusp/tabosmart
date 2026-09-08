@@ -2740,3 +2740,92 @@ test("maintenance records only Chrome's actually focused selected tab", async ()
     T + 10 * DAY,
   );
 });
+
+test("concurrent cached readers see committed user state throughout a pending or rejected write", async () => {
+  for (const operation of [
+    "settings",
+    "clearData",
+    "protect",
+    "dismiss",
+    "save",
+    "forget",
+    "dismissDisclosure",
+  ]) {
+    for (const reject of [false, true]) {
+      const f = fixture(),
+        b = await enabled(f);
+      await b.handle({ type: "settings", patch: { aiEnabled: false } });
+      const initial = await b.handle({ type: "snapshot" });
+      const saved = await b.handle({
+        type: "save",
+        tabIds: [1],
+        expectedTabs: initial.tabs,
+      });
+      const before = copy(await b.handle({ type: "cachedSnapshot" }));
+      let release, entered;
+      const gate = new Promise((resolve) => {
+        release = resolve;
+      });
+      const writing = new Promise((resolve) => {
+        entered = resolve;
+      });
+      const set = f.api.storage.local.set;
+      f.api.storage.local.set = async (value) => {
+        const staged = value[STORAGE_KEY];
+        const target =
+          operation === "settings"
+            ? staged.settings.aiEnabled
+            : operation === "clearData"
+              ? !staged.settings.enabled
+              : operation === "protect"
+                ? !!staged.protectedUrls[initial.tabs[0].url]
+                : operation === "dismiss"
+                  ? Object.keys(staged.dismissed).length > 0
+                  : operation === "save"
+                    ? staged.saved.length > 1
+                    : operation === "forget"
+                      ? staged.saved.length === 0
+                      : !staged.installDisclosure;
+        if (target) {
+          entered();
+          await gate;
+          if (reject) throw new Error("Rejected user-state write");
+        }
+        return set(value);
+      };
+      const message = {
+        type: operation,
+        tabIds: [1],
+        expectedTabs: initial.tabs,
+        patch: { aiEnabled: true },
+        protected: true,
+        kind: "saved",
+        id:
+          operation === "dismiss" ? initial.suggestions[0].id : saved.action.id,
+      };
+      const pending = b.handle(message);
+      await writing;
+      const fields = (snapshot) => ({
+        settings: snapshot.settings,
+        saved: snapshot.saved,
+        recovery: snapshot.recovery,
+        installDisclosure: snapshot.installDisclosure,
+      });
+      assert.deepEqual(
+        fields(await b.handle({ type: "cachedSnapshot" })),
+        fields(before),
+        operation,
+      );
+      release();
+      assert.equal((await pending).ok, !reject, operation);
+      const after = await b.handle({ type: "cachedSnapshot" });
+      if (reject) assert.deepEqual(fields(after), fields(before), operation);
+      else if (operation === "settings")
+        assert.equal(after.settings.aiEnabled, true);
+      else if (operation === "clearData")
+        assert.equal(after.settings.enabled, false);
+      else if (operation === "save") assert.equal(after.saved.length, 2);
+      else if (operation === "forget") assert.equal(after.saved.length, 0);
+    }
+  }
+});

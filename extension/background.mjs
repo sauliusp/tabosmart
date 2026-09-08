@@ -136,10 +136,13 @@ export function createBackend(
     updateToolbar();
   }
   let snapshotRevision = 0,
-    snapshotEpoch = 0;
-  const persist = () => {
+    snapshotEpoch = 0,
+    mutationReadSnapshot = null;
+  const persist = async () => {
     state.snapshotRevision = ++snapshotRevision;
-    return api.storage.local.set({ [STORAGE_KEY]: prepareStorageState(state) });
+    await api.storage.local.set({ [STORAGE_KEY]: prepareStorageState(state) });
+    if (mutationReadSnapshot)
+      mutationReadSnapshot = structuredClone(cachedSnapshot());
   };
   function notify() {
     updateToolbar();
@@ -398,6 +401,24 @@ export function createBackend(
       now: cached?.now ?? now(),
       evaluation,
     };
+  }
+  function readableSnapshot() {
+    if (!mutationReadSnapshot) return cachedSnapshot();
+    // Fast readers remain responsive, but never consume an uncommitted opt-in,
+    // erase, protection or saved-list edit while its storage write is pending.
+    const snapshot = structuredClone(mutationReadSnapshot);
+    if (
+      snapshot.settings.enabled &&
+      queuedChecks.size &&
+      snapshot.evaluation.state !== "checking"
+    )
+      Object.assign(snapshot.evaluation, {
+        state: "checking",
+        phase: "queued",
+        requestedAt: Math.min(...queuedChecks.values()),
+        error: null,
+      });
+    return snapshot;
   }
   async function scheduleEvaluation(activatedId = null, observedAt = now()) {
     if (!state.settings.enabled) return;
@@ -698,8 +719,14 @@ export function createBackend(
         ...(warnings.length ? { warning: warnings.join(" ") } : {}),
       });
     } else if (type === "dismissDisclosure") {
+      const previousDisclosure = state.installDisclosure;
       state.installDisclosure = false;
-      await persist();
+      try {
+        await persist();
+      } catch (error) {
+        state.installDisclosure = previousDisclosure;
+        throw error;
+      }
       return cachedSnapshot();
     } else if (type === "retryHistory") {
       if (!state.settings.historyEnabled) await configureHistory();
@@ -1098,7 +1125,7 @@ export function createBackend(
             }))
         : message?.type === "cachedSnapshot"
           ? ensureReady()
-              .then(() => ({ ok: true, ...cachedSnapshot() }))
+              .then(() => ({ ok: true, ...readableSnapshot() }))
               .catch((error) => ({
                 ok: false,
                 error: error.message,
@@ -1108,6 +1135,21 @@ export function createBackend(
               try {
                 if (!message || typeof message.type !== "string")
                   throw fault("Invalid request.", "INVALID_REQUEST");
+                if (
+                  [
+                    "settings",
+                    "clearData",
+                    "protect",
+                    "dismiss",
+                    "group",
+                    "save",
+                    "close",
+                    "restore",
+                    "forget",
+                    "dismissDisclosure",
+                  ].includes(message.type)
+                )
+                  mutationReadSnapshot = structuredClone(cachedSnapshot());
                 return {
                   ok: true,
                   ...(await action(message)),
@@ -1120,6 +1162,8 @@ export function createBackend(
                   error: error.message || "The action could not be completed.",
                   code: error.code || "ACTION_FAILED",
                 };
+              } finally {
+                mutationReadSnapshot = null;
               }
             }, ["snapshot", "dismiss", "protect", "focus", "group", "save", "close"].includes(message?.type)).catch(
               (error) => ({

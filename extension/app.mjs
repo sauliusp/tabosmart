@@ -69,6 +69,8 @@ let data = null,
   leaving = false,
   lastToolbarPayload = null,
   refreshRun = null,
+  pendingSnapshotRefresh = false,
+  snapshotRefreshRun = null,
   checkRequest = null,
   lastDecision = null,
   namingActivity = { running: false, queued: 0 },
@@ -258,6 +260,7 @@ async function action(type, args = {}, message = "Done.") {
       .querySelectorAll("[data-mutate]")
       .forEach((b) => (b.disabled = false));
     updateReviewSelection();
+    void drainSnapshotChanges();
   }
 }
 function expected(tabs) {
@@ -705,6 +708,10 @@ function syncProactiveNames() {
       enabled: !!data?.settings.enabled && !!data?.settings.aiEnabled,
       available: capabilities.names.state === "ready",
       visible: !document.hidden && (view === "suggestions" || dialog.open),
+      reviewProposal:
+        dialog.open && review?.suggestion?.type === "group"
+          ? selectedNameProposal()
+          : null,
     },
   );
 }
@@ -1438,6 +1445,7 @@ document.addEventListener("change", (event) => {
       el.checked ? review.selected.add(id) : review.selected.delete(id);
       changedReviewSelection();
       updateReviewSelection();
+      void syncProactiveNames();
     } else {
       el.checked ? selection.add(id) : selection.delete(id);
       $("#selection-count").textContent = `${selection.size} selected`;
@@ -1461,6 +1469,7 @@ document.addEventListener("change", (event) => {
         (c) => (c.checked = review.selected.has(Number(c.dataset.tabCheck))),
       );
     updateReviewSelection();
+    void syncProactiveNames();
   }
   if (el.id === "group-name-language")
     action(
@@ -1516,19 +1525,37 @@ window.addEventListener("pagehide", () => {
   toolbarPort = null;
   cancelLocalAI({ preserveSetup: true });
 });
-globalThis.chrome?.runtime?.onMessage?.addListener((message) => {
-  if (message.type === "snapshotChanged" && !busy) {
-    api("cachedSnapshot")
-      .then((next) => {
+function drainSnapshotChanges() {
+  if (busy || !pendingSnapshotRefresh || snapshotRefreshRun)
+    return snapshotRefreshRun;
+  snapshotRefreshRun = (async () => {
+    while (pendingSnapshotRefresh && !busy) {
+      pendingSnapshotRefresh = false;
+      try {
+        const next = await api("cachedSnapshot");
         const previous = data;
         acceptData(next);
         updateCheckStatus();
-        if (!dialog.open && viewSignature(previous) !== viewSignature(next))
+        if (
+          !busy &&
+          !dialog.open &&
+          viewSignature(previous) !== viewSignature(data)
+        )
           renderPreservingFocus();
-      })
-      .catch(() => {
+      } catch {
         setCheckStatus("error", "Check interrupted");
-      });
+      }
+    }
+  })().finally(() => {
+    snapshotRefreshRun = null;
+    if (pendingSnapshotRefresh && !busy) void drainSnapshotChanges();
+  });
+  return snapshotRefreshRun;
+}
+globalThis.chrome?.runtime?.onMessage?.addListener((message) => {
+  if (message.type === "snapshotChanged") {
+    pendingSnapshotRefresh = true;
+    void drainSnapshotChanges();
   }
 });
 async function bootstrap() {
