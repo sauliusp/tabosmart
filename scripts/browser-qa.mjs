@@ -422,6 +422,67 @@ try {
   await page.evaluate(() => {
     chrome.runtime.sendMessage = window.qaConcurrentSend;
   });
+  // A lost read must retry even if no further notification arrives. Suppress
+  // additional delivery here so ordinary background activity cannot mask it.
+  await page.evaluate(async () => {
+    await window.qaConcurrentSend({
+      type: "settings",
+      patch: { aiEnabled: true },
+    });
+  });
+  await page
+    .getByRole("button", { name: "Turn off local AI", exact: true })
+    .waitFor();
+  await page.evaluate(() => {
+    const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+    let remainingFailures = 2;
+    window.qaSnapshotReads = [];
+    chrome.runtime.sendMessage = async (message, ...args) => {
+      if (message.type === "cachedSnapshot") {
+        window.qaSnapshotReads.push(Date.now());
+        if (remainingFailures-- > 0)
+          throw new Error("Temporary snapshot delivery failure");
+      }
+      return send(message, ...args);
+    };
+  });
+  await worker.evaluate(() => {
+    globalThis.qaOriginalNotificationSend = chrome.runtime.sendMessage.bind(
+      chrome.runtime,
+    );
+    chrome.runtime.sendMessage = (message, ...args) =>
+      message.type === "snapshotChanged"
+        ? Promise.resolve()
+        : globalThis.qaOriginalNotificationSend(message, ...args);
+  });
+  await otherWorkspace.evaluate(() =>
+    chrome.runtime.sendMessage({
+      type: "settings",
+      patch: { aiEnabled: false },
+    }),
+  );
+  await worker.evaluate(() =>
+    globalThis.qaOriginalNotificationSend({ type: "snapshotChanged" }),
+  );
+  await page
+    .getByRole("button", { name: "Enable local AI", exact: true })
+    .waitFor();
+  const snapshotReads = await page.evaluate(() => window.qaSnapshotReads);
+  check(
+    "Failed opt-out snapshot reads retry and recover without focus or manual refresh",
+    snapshotReads.length >= 3,
+  );
+  check(
+    "Snapshot retries use backoff instead of a tight loop",
+    snapshotReads[1] - snapshotReads[0] >= 900 &&
+      snapshotReads[2] - snapshotReads[1] >= 1900,
+  );
+  await worker.evaluate(() => {
+    chrome.runtime.sendMessage = globalThis.qaOriginalNotificationSend;
+  });
+  await page.evaluate(() => {
+    chrome.runtime.sendMessage = window.qaConcurrentSend;
+  });
   await otherWorkspace.close();
   await page
     .getByRole("button", { name: "Enable local AI", exact: true })

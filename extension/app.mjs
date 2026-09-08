@@ -71,6 +71,8 @@ let data = null,
   refreshRun = null,
   pendingSnapshotRefresh = false,
   snapshotRefreshRun = null,
+  snapshotRefreshTimer = null,
+  snapshotRefreshFailures = 0,
   checkRequest = null,
   lastDecision = null,
   namingActivity = { running: false, queued: 0 },
@@ -1521,18 +1523,28 @@ window.addEventListener("pagehide", () => {
   proactiveNames.stop();
   proactiveDiscovery.stop();
   clearTimeout(toolbarTimer);
+  clearTimeout(snapshotRefreshTimer);
+  snapshotRefreshTimer = null;
+  pendingSnapshotRefresh = false;
   toolbarPort?.disconnect();
   toolbarPort = null;
   cancelLocalAI({ preserveSetup: true });
 });
 function drainSnapshotChanges() {
-  if (busy || !pendingSnapshotRefresh || snapshotRefreshRun)
+  if (
+    leaving ||
+    busy ||
+    !pendingSnapshotRefresh ||
+    snapshotRefreshRun ||
+    snapshotRefreshTimer
+  )
     return snapshotRefreshRun;
   snapshotRefreshRun = (async () => {
     while (pendingSnapshotRefresh && !busy) {
       pendingSnapshotRefresh = false;
       try {
         const next = await api("cachedSnapshot");
+        snapshotRefreshFailures = 0;
         const previous = data;
         acceptData(next);
         updateCheckStatus();
@@ -1544,16 +1556,30 @@ function drainSnapshotChanges() {
           renderPreservingFocus();
       } catch {
         setCheckStatus("error", "Check interrupted");
+        if (leaving) break;
+        pendingSnapshotRefresh = true;
+        const delay = Math.min(
+          1000 * 2 ** Math.min(snapshotRefreshFailures++, 4),
+          10000,
+        );
+        snapshotRefreshTimer = setTimeout(() => {
+          snapshotRefreshTimer = null;
+          void drainSnapshotChanges();
+        }, delay);
+        break;
       }
     }
   })().finally(() => {
     snapshotRefreshRun = null;
-    if (pendingSnapshotRefresh && !busy) void drainSnapshotChanges();
+    if (pendingSnapshotRefresh && !busy && !snapshotRefreshTimer)
+      void drainSnapshotChanges();
   });
   return snapshotRefreshRun;
 }
 globalThis.chrome?.runtime?.onMessage?.addListener((message) => {
   if (message.type === "snapshotChanged") {
+    clearTimeout(snapshotRefreshTimer);
+    snapshotRefreshTimer = null;
     pendingSnapshotRefresh = true;
     void drainSnapshotChanges();
   }

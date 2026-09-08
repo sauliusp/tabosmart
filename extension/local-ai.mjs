@@ -733,8 +733,11 @@ export function discoverGroups(
     const request = beginRequest("discovery");
     try {
       if (
-        (await bounded(apiFor("discovery")?.availability(options), 15000)) !==
-        "available"
+        (await bounded(
+          apiFor("discovery")?.availability(options),
+          15000,
+          signal,
+        )) !== "available"
       )
         throw new LocalAIError(
           "unavailable",

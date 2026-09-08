@@ -1814,3 +1814,34 @@ test("aborting a pending language check releases the inference queue without cre
   assert.equal(created, 1);
   waiting.resolve("available");
 });
+
+test("aborting discovery during availability releases the shared queue for manual naming", async () => {
+  const availability = deferred();
+  let checks = 0,
+    created = 0;
+  set("LanguageModel", {
+    availability: async () =>
+      ++checks === 1 ? availability.promise : "available",
+    async create() {
+      created++;
+      return { prompt: async () => "Mercury research", destroy() {} };
+    },
+  });
+  const ai = await fresh(),
+    controller = new AbortController();
+  const stopped = ai.discoverGroups(discoveryTabs, {
+    signal: controller.signal,
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(checks, 1);
+  controller.abort();
+  const manual = ai.suggestName([
+    { title: "Mercury overview" },
+    { title: "Mercury API" },
+  ]);
+  assert.deepEqual(await stopped, []);
+  assert.equal(await manual, "Mercury research");
+  assert.equal(created, 1);
+  assert.notEqual(ai.getLocalAIActivity().discovery, true);
+  availability.resolve("available");
+});
