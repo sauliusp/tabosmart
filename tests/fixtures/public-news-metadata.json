@@ -1,0 +1,70 @@
+{
+  "checkedAt": "2026-09-08T09:42:13.191620+00:00",
+  "boundary": "Public read-only metadata reference. Actual user tab titles, protection/group flags and windows were not inspected. No full article/page content retained.",
+  "pages": [
+    {
+      "url": "https://www.lrytas.lt/",
+      "finalURL": "https://www.lrytas.lt/",
+      "title": "Lrytas – žinios, kurios šviečia. Atsinaujinome, kad šviestume dar ryškiau",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://www.delfi.lt/",
+      "finalURL": "https://www.delfi.lt/",
+      "title": "Delfi naujienos - Pagrindinis žinių portalas Lietuvoje",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://www.alfa.lt/",
+      "error": "HTTP Error 403: Forbidden",
+      "source": "Public fetch unavailable; no title invented"
+    },
+    {
+      "url": "https://www.lrt.lt/",
+      "finalURL": "https://www.lrt.lt/",
+      "title": "Lietuvos nacionalinis radijas ir televizija. Naujienos, įrašai ir transliacijos. - LRT",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://www.bbc.com/news",
+      "finalURL": "https://www.bbc.com/news",
+      "title": "BBC News - Breaking news, video and the latest top stories from the U.S. and around the world",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://www.reuters.com/",
+      "error": "HTTP Error 401: HTTP Forbidden",
+      "source": "Public fetch unavailable; no title invented"
+    },
+    {
+      "url": "https://apnews.com/",
+      "finalURL": "https://apnews.com/",
+      "title": "Associated Press News: Breaking News, Latest Headlines and Videos | AP News",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://www.theguardian.com/international",
+      "finalURL": "https://www.theguardian.com/international",
+      "title": "Latest news, sport and opinion from the Guardian",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://www.lemonde.fr/",
+      "finalURL": "https://www.lemonde.fr/",
+      "title": "Le Monde.fr - Actualités et Infos en France et dans le monde",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://www.dw.com/en/top-stories/s-9097",
+      "finalURL": "https://www.dw.com/en/top-stories/s-9097",
+      "title": "News and current affairs from Germany and around the world",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    },
+    {
+      "url": "https://elpais.com/",
+      "finalURL": "https://elpais.com/",
+      "title": "EL PAÍS: el periódico global",
+      "source": "Public HTML title fetched with urllib; not installed tab metadata"
+    }
+  ]
+}

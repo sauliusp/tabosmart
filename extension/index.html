@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Tabosmart · A little more headspace</title>
+    <link rel="icon" href="icons/icon-32.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.mjs"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="shell">
+      <aside class="sidebar" aria-label="Workspace navigation">
+        <a class="brand" href="index.html" aria-label="Tabosmart home"
+          ><img src="icons/icon-48.png" alt="" width="36" height="36" /><span
+            >Tabosmart<span class="brand-dot">.</span></span
+          ></a
+        >
+        <p class="eyebrow workspace-label">YOUR WORKSPACE</p>
+        <nav id="navigation" aria-label="Main navigation">
+          <button class="nav-item active" data-view="suggestions">
+            <span data-icon="spark"></span>Suggestions<span
+              id="suggestion-count"
+              class="nav-count"
+              >0</span
+            >
+          </button>
+          <button class="nav-item" data-view="tabs">
+            <span data-icon="tabs"></span>Open tabs<span
+              id="tab-count"
+              class="nav-count"
+              >0</span
+            >
+          </button>
+          <button class="nav-item" data-view="saved">
+            <span data-icon="bookmark"></span>Saved for later<span
+              id="saved-count"
+              class="nav-count"
+              >0</span
+            >
+          </button>
+          <button class="nav-item" data-view="recovery">
+            <span data-icon="history"></span>Recovery
+          </button>
+        </nav>
+        <div class="sidebar-bottom">
+          <section class="community-note" aria-label="Help shape Tabosmart">
+            <p class="eyebrow">BUILT WITH YOUR FEEDBACK</p>
+            <strong>Your next good idea<br />belongs here.</strong>
+            <p>Something missing? A suggestion that missed the point? Tell us.</p>
+            <button class="text-button community-link" data-view="feedback">Help shape Tabosmart <span data-icon="arrow"></span></button>
+          </section>
+          <div class="local-note">
+            <span class="local-symbol" data-icon="shield"></span>
+            <div>
+              <strong>A space of your own</strong>
+              <p>Your tab data stays here,<br />on this device.</p>
+            </div>
+          </div>
+          <button class="nav-item" data-view="settings">
+            <span data-icon="sliders"></span>Settings & privacy
+          </button>
+          <a class="nav-item" href="welcome.html">Quick start guide</a>
+          <span class="version">TABOSMART 1.5.0</span>
+        </div>
+      </aside>
+      <div class="workspace">
+        <header class="topbar">
+          <span class="breadcrumb">Your browser, with room to breathe.</span>
+          <div class="topbar-right">
+            <span id="check-status" class="check-state" role="status"
+              ><span class="status-dot"></span
+              ><span>Opening your workspace</span></span
+            ><button
+              id="ai-status"
+              class="ai-chip"
+              aria-label="Local AI status. Open settings"
+            >
+              <span class="status-dot"></span
+              ><span>Local AI · checking</span></button
+            ><button
+              id="close-workspace"
+              class="workspace-close"
+              aria-label="Close Tabosmart workspace"
+              title="Close this workspace and return to browsing. Observation keeps running."
+            >
+              <span data-icon="close"></span>Close
+            </button>
+          </div>
+        </header>
+        <main id="main" tabindex="-1">
+          <div class="loading-state" role="status">
+            <span class="spinner"></span>Opening your workspace…
+          </div>
+        </main>
+        <footer class="footer">
+          <span
+            ><span data-icon="check"></span>Nothing moves or closes without your
+            say.</span
+          ><button id="refresh" class="text-button">
+            Refresh suggestions <span data-icon="refresh"></span>
+          </button>
+        </footer>
+      </div>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <dialog id="review-dialog" aria-labelledby="dialog-title">
+      <div id="dialog-content"></div>
+    </dialog>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "tabosmart",
+  "version": "1.5.0",
+  "private": true,
+  "type": "module",
+  "description": "Local, thoughtful tab decluttering for Chrome",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "qa:browser": "node scripts/browser-qa.mjs",
+    "assets": "node scripts/store-assets.mjs",
+    "pack": "node scripts/pack.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "jsqr": "^1.4.0",
+    "playwright": "^1.55.0",
+    "prettier": "^3.9.6",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.4"
+  }
+}

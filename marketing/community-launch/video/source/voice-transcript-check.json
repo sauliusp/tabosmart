@@ -1,0 +1,904 @@
+{
+  "text": " You didn't open all those tabs for no reason. You just don't need them all right now. TableSmart brings related work together and helps you review repeat pages, save links for later, close only what you choose, recovery reopens, URLs, not unsaved edits, your browsing data stays on your device, optional local AI add suggestions and group names on supported Chrome devices. The core works without it. I'm building TableSmart with the people using it. Tell me what missed the point or what would make it useful tomorrow. Let's tap Clutter, more headspace.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 1.86,
+      "text": " You didn't open all those tabs for no reason.",
+      "tokens": [
+        50364,
+        509,
+        994,
+        380,
+        1269,
+        439,
+        729,
+        20743,
+        337,
+        572,
+        1778,
+        13,
+        50476
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " You",
+          "start": 0.0,
+          "end": 0.14,
+          "probability": 0.6572265625
+        },
+        {
+          "word": " didn't",
+          "start": 0.14,
+          "end": 0.4,
+          "probability": 0.9873046875
+        },
+        {
+          "word": " open",
+          "start": 0.4,
+          "end": 0.58,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " all",
+          "start": 0.58,
+          "end": 0.88,
+          "probability": 0.97998046875
+        },
+        {
+          "word": " those",
+          "start": 0.88,
+          "end": 1.06,
+          "probability": 0.9404296875
+        },
+        {
+          "word": " tabs",
+          "start": 1.06,
+          "end": 1.26,
+          "probability": 0.98193359375
+        },
+        {
+          "word": " for",
+          "start": 1.26,
+          "end": 1.48,
+          "probability": 0.98779296875
+        },
+        {
+          "word": " no",
+          "start": 1.48,
+          "end": 1.62,
+          "probability": 0.998046875
+        },
+        {
+          "word": " reason.",
+          "start": 1.62,
+          "end": 1.86,
+          "probability": 0.9990234375
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 2.3,
+      "end": 3.56,
+      "text": " You just don't need them all right now.",
+      "tokens": [
+        50476,
+        509,
+        445,
+        500,
+        380,
+        643,
+        552,
+        439,
+        558,
+        586,
+        13,
+        50554
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " You",
+          "start": 2.3,
+          "end": 2.34,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " just",
+          "start": 2.34,
+          "end": 2.54,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " don't",
+          "start": 2.54,
+          "end": 2.74,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " need",
+          "start": 2.74,
+          "end": 2.84,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " them",
+          "start": 2.84,
+          "end": 2.98,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " all",
+          "start": 2.98,
+          "end": 3.16,
+          "probability": 0.9619140625
+        },
+        {
+          "word": " right",
+          "start": 3.16,
+          "end": 3.32,
+          "probability": 0.990234375
+        },
+        {
+          "word": " now.",
+          "start": 3.32,
+          "end": 3.56,
+          "probability": 0.9912109375
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 3.86,
+      "end": 5.28,
+      "text": " TableSmart brings related work together",
+      "tokens": [
+        50554,
+        25535,
+        50,
+        18696,
+        5607,
+        4077,
+        589,
+        1214,
+        50636
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " TableSmart",
+          "start": 3.86,
+          "end": 4.2,
+          "probability": 0.6416015625
+        },
+        {
+          "word": " brings",
+          "start": 4.2,
+          "end": 4.48,
+          "probability": 0.91943359375
+        },
+        {
+          "word": " related",
+          "start": 4.48,
+          "end": 4.8,
+          "probability": 0.98974609375
+        },
+        {
+          "word": " work",
+          "start": 4.8,
+          "end": 4.98,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " together",
+          "start": 4.98,
+          "end": 5.28,
+          "probability": 0.99609375
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 0,
+      "start": 5.28,
+      "end": 7.72,
+      "text": " and helps you review repeat pages, save links for later,",
+      "tokens": [
+        50636,
+        293,
+        3665,
+        291,
+        3131,
+        7149,
+        7183,
+        11,
+        3155,
+        6123,
+        337,
+        1780,
+        11,
+        50759
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " and",
+          "start": 5.28,
+          "end": 5.56,
+          "probability": 0.93798828125
+        },
+        {
+          "word": " helps",
+          "start": 5.56,
+          "end": 5.76,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " you",
+          "start": 5.76,
+          "end": 5.9,
+          "probability": 0.9853515625
+        },
+        {
+          "word": " review",
+          "start": 5.9,
+          "end": 6.12,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " repeat",
+          "start": 6.12,
+          "end": 6.36,
+          "probability": 0.990234375
+        },
+        {
+          "word": " pages,",
+          "start": 6.36,
+          "end": 6.72,
+          "probability": 0.98828125
+        },
+        {
+          "word": " save",
+          "start": 6.96,
+          "end": 7.14,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " links",
+          "start": 7.14,
+          "end": 7.32,
+          "probability": 0.994140625
+        },
+        {
+          "word": " for",
+          "start": 7.32,
+          "end": 7.5,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " later,",
+          "start": 7.5,
+          "end": 7.72,
+          "probability": 0.9990234375
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "seek": 0,
+      "start": 7.94,
+      "end": 10.32,
+      "text": " close only what you choose, recovery reopens, URLs,",
+      "tokens": [
+        50759,
+        1998,
+        787,
+        437,
+        291,
+        2826,
+        11,
+        8597,
+        28994,
+        694,
+        11,
+        43267,
+        11,
+        50894
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " close",
+          "start": 7.94,
+          "end": 8.08,
+          "probability": 0.970703125
+        },
+        {
+          "word": " only",
+          "start": 8.08,
+          "end": 8.36,
+          "probability": 0.9462890625
+        },
+        {
+          "word": " what",
+          "start": 8.36,
+          "end": 8.52,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " you",
+          "start": 8.52,
+          "end": 8.62,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " choose,",
+          "start": 8.62,
+          "end": 8.86,
+          "probability": 0.98486328125
+        },
+        {
+          "word": " recovery",
+          "start": 9.04,
+          "end": 9.34,
+          "probability": 0.900390625
+        },
+        {
+          "word": " reopens,",
+          "start": 9.34,
+          "end": 9.96,
+          "probability": 0.947265625
+        },
+        {
+          "word": " URLs,",
+          "start": 10.08,
+          "end": 10.32,
+          "probability": 0.970703125
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "seek": 0,
+      "start": 10.66,
+      "end": 12.78,
+      "text": " not unsaved edits, your browsing data stays on your device,",
+      "tokens": [
+        50894,
+        406,
+        2693,
+        12865,
+        41752,
+        11,
+        428,
+        38602,
+        1412,
+        10834,
+        322,
+        428,
+        4302,
+        11,
+        51018
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " not",
+          "start": 10.66,
+          "end": 10.74,
+          "probability": 0.98193359375
+        },
+        {
+          "word": " unsaved",
+          "start": 10.74,
+          "end": 11.08,
+          "probability": 0.83056640625
+        },
+        {
+          "word": " edits,",
+          "start": 11.08,
+          "end": 11.26,
+          "probability": 0.9736328125
+        },
+        {
+          "word": " your",
+          "start": 11.48,
+          "end": 11.56,
+          "probability": 0.97412109375
+        },
+        {
+          "word": " browsing",
+          "start": 11.56,
+          "end": 11.84,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " data",
+          "start": 11.84,
+          "end": 12.04,
+          "probability": 0.98486328125
+        },
+        {
+          "word": " stays",
+          "start": 12.04,
+          "end": 12.3,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " on",
+          "start": 12.3,
+          "end": 12.44,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " your",
+          "start": 12.44,
+          "end": 12.52,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " device,",
+          "start": 12.52,
+          "end": 12.78,
+          "probability": 0.998046875
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "seek": 0,
+      "start": 13.08,
+      "end": 15.2,
+      "text": " optional local AI add suggestions and group names",
+      "tokens": [
+        51018,
+        17312,
+        2654,
+        7318,
+        909,
+        13396,
+        293,
+        1594,
+        5288,
+        51130
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " optional",
+          "start": 13.08,
+          "end": 13.36,
+          "probability": 0.9814453125
+        },
+        {
+          "word": " local",
+          "start": 13.36,
+          "end": 13.6,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " AI",
+          "start": 13.6,
+          "end": 13.92,
+          "probability": 0.9404296875
+        },
+        {
+          "word": " add",
+          "start": 13.92,
+          "end": 14.22,
+          "probability": 0.342041015625
+        },
+        {
+          "word": " suggestions",
+          "start": 14.22,
+          "end": 14.58,
+          "probability": 0.99609375
+        },
+        {
+          "word": " and",
+          "start": 14.58,
+          "end": 14.84,
+          "probability": 0.98779296875
+        },
+        {
+          "word": " group",
+          "start": 14.84,
+          "end": 14.98,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " names",
+          "start": 14.98,
+          "end": 15.2,
+          "probability": 0.98583984375
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "seek": 0,
+      "start": 15.2,
+      "end": 16.24,
+      "text": " on supported Chrome devices.",
+      "tokens": [
+        51130,
+        322,
+        8104,
+        15327,
+        5759,
+        13,
+        51188
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " on",
+          "start": 15.2,
+          "end": 15.4,
+          "probability": 0.8955078125
+        },
+        {
+          "word": " supported",
+          "start": 15.4,
+          "end": 15.66,
+          "probability": 0.9697265625
+        },
+        {
+          "word": " Chrome",
+          "start": 15.66,
+          "end": 15.9,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " devices.",
+          "start": 15.9,
+          "end": 16.24,
+          "probability": 0.97021484375
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "seek": 0,
+      "start": 16.54,
+      "end": 17.38,
+      "text": " The core works without it.",
+      "tokens": [
+        51188,
+        440,
+        4965,
+        1985,
+        1553,
+        309,
+        13,
+        51244
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " The",
+          "start": 16.54,
+          "end": 16.58,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " core",
+          "start": 16.58,
+          "end": 16.76,
+          "probability": 0.84912109375
+        },
+        {
+          "word": " works",
+          "start": 16.76,
+          "end": 16.98,
+          "probability": 0.98779296875
+        },
+        {
+          "word": " without",
+          "start": 16.98,
+          "end": 17.22,
+          "probability": 0.994140625
+        },
+        {
+          "word": " it.",
+          "start": 17.22,
+          "end": 17.38,
+          "probability": 0.9970703125
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "seek": 0,
+      "start": 17.6,
+      "end": 19.24,
+      "text": " I'm building TableSmart with the people using it.",
+      "tokens": [
+        51244,
+        286,
+        478,
+        2390,
+        25535,
+        50,
+        18696,
+        365,
+        264,
+        561,
+        1228,
+        309,
+        13,
+        51330
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " I'm",
+          "start": 17.6,
+          "end": 17.72,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " building",
+          "start": 17.72,
+          "end": 17.88,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " TableSmart",
+          "start": 17.88,
+          "end": 18.38,
+          "probability": 0.98388671875
+        },
+        {
+          "word": " with",
+          "start": 18.38,
+          "end": 18.54,
+          "probability": 0.98193359375
+        },
+        {
+          "word": " the",
+          "start": 18.54,
+          "end": 18.62,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " people",
+          "start": 18.62,
+          "end": 18.8,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " using",
+          "start": 18.8,
+          "end": 19.06,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " it.",
+          "start": 19.06,
+          "end": 19.24,
+          "probability": 0.99609375
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "seek": 0,
+      "start": 19.4,
+      "end": 20.16,
+      "text": " Tell me what missed the point",
+      "tokens": [
+        51330,
+        5115,
+        385,
+        437,
+        6721,
+        264,
+        935,
+        51376
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " Tell",
+          "start": 19.4,
+          "end": 19.48,
+          "probability": 0.99609375
+        },
+        {
+          "word": " me",
+          "start": 19.48,
+          "end": 19.58,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " what",
+          "start": 19.58,
+          "end": 19.7,
+          "probability": 0.970703125
+        },
+        {
+          "word": " missed",
+          "start": 19.7,
+          "end": 19.84,
+          "probability": 0.96435546875
+        },
+        {
+          "word": " the",
+          "start": 19.84,
+          "end": 19.94,
+          "probability": 0.81884765625
+        },
+        {
+          "word": " point",
+          "start": 19.94,
+          "end": 20.16,
+          "probability": 0.99951171875
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "seek": 0,
+      "start": 20.16,
+      "end": 21.34,
+      "text": " or what would make it useful tomorrow.",
+      "tokens": [
+        51376,
+        420,
+        437,
+        576,
+        652,
+        309,
+        4420,
+        4153,
+        13,
+        51440
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " or",
+          "start": 20.16,
+          "end": 20.34,
+          "probability": 0.73828125
+        },
+        {
+          "word": " what",
+          "start": 20.34,
+          "end": 20.46,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " would",
+          "start": 20.46,
+          "end": 20.56,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " make",
+          "start": 20.56,
+          "end": 20.72,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " it",
+          "start": 20.72,
+          "end": 20.82,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " useful",
+          "start": 20.82,
+          "end": 21.0,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " tomorrow.",
+          "start": 21.0,
+          "end": 21.34,
+          "probability": 0.9921875
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "seek": 0,
+      "start": 21.6,
+      "end": 22.78,
+      "text": " Let's tap Clutter, more headspace.",
+      "tokens": [
+        51440,
+        961,
+        311,
+        5119,
+        2033,
+        9947,
+        11,
+        544,
+        1378,
+        24824,
+        13,
+        51530
+      ],
+      "temperature": 0,
+      "avg_logprob": -0.16693980677598189,
+      "compression_ratio": 1.6246334310850439,
+      "no_speech_prob": 0.01612413488328457,
+      "words": [
+        {
+          "word": " Let's",
+          "start": 21.6,
+          "end": 21.76,
+          "probability": 0.66650390625
+        },
+        {
+          "word": " tap",
+          "start": 21.76,
+          "end": 21.9,
+          "probability": 0.81298828125
+        },
+        {
+          "word": " Clutter,",
+          "start": 21.9,
+          "end": 22.18,
+          "probability": 0.66748046875
+        },
+        {
+          "word": " more",
+          "start": 22.34,
+          "end": 22.44,
+          "probability": 0.9462890625
+        },
+        {
+          "word": " headspace.",
+          "start": 22.44,
+          "end": 22.78,
+          "probability": 0.81298828125
+        }
+      ]
+    }
+  ]
+}

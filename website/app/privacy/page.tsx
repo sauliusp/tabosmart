@@ -1,0 +1,4 @@
+import type { Metadata } from 'next';import policy from '../../content/privacy.json';
+export const metadata:Metadata={title:'Privacy and permissions | Tabosmart',description:'What Tabosmart reads, stores and processes locally. Understand history insights, optional AI, deletion and voluntary Featurebase feedback.',alternates:{canonical:'/privacy/'}};
+function clean(s:string){return s.replace(/\*\*/g,'').replace(/\[([^\]]+)\]\(([^)]+)\)/g,'$1 ($2)');}
+export default function Privacy(){return <><header className="site-header"><a href="/" className="brand">Tabosmart.</a><a href="https://tabosmart.featurebase.app/">Feedback ↗</a></header><main className="article privacy">{policy.split(/\n\n+/).map((part,i)=>part.startsWith('# ')?<h1 key={i}>{part.slice(2)}</h1>:part.startsWith('## ')?<h2 key={i}>{part.slice(3)}</h2>:<p key={i}>{clean(part)}</p>)}<p><a href="mailto:saulius.developer@gmail.com">Contact the publisher</a> · <a href="/">Back to Tabosmart</a></p></main></>}

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="484" height="128" viewBox="0 0 484 128" role="img" aria-labelledby="title">
+  <title id="title">Tabosmart</title>
+  <rect x="16" y="16" width="96" height="96" rx="27" fill="#263F36"/>
+  <path d="M40 37h44a8 8 0 0 1 8 8v7H36v-7a8 8 0 0 1 4-8Z" fill="#AFC9B5"/>
+  <path d="M36 57h56v7a8 8 0 0 1-8 8H73v13a10 10 0 0 1-10 10h-8V72H44a8 8 0 0 1-8-8Z" fill="#F5F5EF"/>
+  <text x="136" y="83" fill="#263F36" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-size="55" font-weight="600" letter-spacing="-2">Tabosmart</text>
+</svg>

@@ -1,0 +1,158 @@
+{
+  "createdAt": "2026-09-08T13:12:33.172Z",
+  "version": "1.5.0",
+  "source": "Screenshots render the extension source UI in a disposable localhost HTTP preview with a synthetic runtime snapshot. No extension, real browser profile or actual model is accessed. No model is mocked as ready; optional AI is unavailable in this preview. These are visual examples, not live behavioral or AI evidence.",
+  "sourceHashes": {
+    "app.mjs": "79b080ebfa1e22d7b0099f668d6d57f406e197fc34a3a336db512f822680446e",
+    "index.html": "088431737ecfbce22cae4bf7579dd8f026683cc73120436bf91741f88855d667",
+    "styles.css": "ae11d129db6ac22c37e9f343b9dd0f9078a2aa115e43f7967ea5582ea7de3c30",
+    "core.mjs": "a483f2aaad23dac9f562fd5f7255af9a08b86957a65b9e64b436977cde2a5299",
+    "topic-evidence.mjs": "a832ea4c93b4604442760c47dc473875e12ed98985c7b583ddba18e927f24796",
+    "group-discovery.mjs": "82c699cff5291c7aab449ad5633fecc2eec8e7b8ef05c57c72dee71ab6006b35",
+    "proactive-discovery.mjs": "9953ffadb411dcbca45a14ce66f7994966ad249e63c422cfb58f99b85f293c2f",
+    "local-ai.mjs": "ea20df5509e5735956075944788a8449eac64422d159c438118f01a25699c5b5",
+    "proactive-names.mjs": "0474b29f4549304da1b462fda54661bd65e56e23ce85ea9da134e57132af1062",
+    "ai-status-watch.mjs": "6b6a19929bcddf49bf60faad12a2fa013fde1ead6d819c636f4e003a3ac6c61b"
+  },
+  "examples": {
+    "openTabs": 100,
+    "protectedURLs": 8,
+    "daysSinceRecordedURLUse": 12,
+    "history": {
+      "completedURLs": 12648,
+      "completedVisits": 47912,
+      "initialProcessedURLs": 256,
+      "initialAnalyzedVisits": 943,
+      "source": "Synthetic display examples only, not actual browser history"
+    }
+  },
+  "accessibility": [
+    {
+      "file": "01-more-headspace.png",
+      "violations": []
+    },
+    {
+      "file": "02-groups-with-a-reason.png",
+      "violations": []
+    },
+    {
+      "file": "03-duplicates-your-decision.png",
+      "violations": []
+    },
+    {
+      "file": "04-save-the-possibility.png",
+      "violations": []
+    },
+    {
+      "file": "05-older-tabs-a-fresh-look.png",
+      "violations": []
+    },
+    {
+      "file": "first-use-preview.png",
+      "violations": []
+    },
+    {
+      "file": "workspace-close-390-preview.png",
+      "violations": []
+    },
+    {
+      "file": "community-feedback.png",
+      "violations": []
+    }
+  ],
+  "pageErrors": [],
+  "externalRequests": [],
+  "storeScreenshots": [
+    "01-more-headspace.png",
+    "02-groups-with-a-reason.png",
+    "03-duplicates-your-decision.png",
+    "04-save-the-possibility.png",
+    "05-older-tabs-a-fresh-look.png"
+  ],
+  "files": [
+    {
+      "file": "01-more-headspace.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 131310
+    },
+    {
+      "file": "02-groups-with-a-reason.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 179588
+    },
+    {
+      "file": "03-duplicates-your-decision.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 183029
+    },
+    {
+      "file": "04-save-the-possibility.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 98338
+    },
+    {
+      "file": "05-older-tabs-a-fresh-look.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 187694
+    },
+    {
+      "file": "community-feedback.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 139012
+    },
+    {
+      "file": "first-use-preview.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 143782
+    },
+    {
+      "file": "local-ai-settings.png",
+      "width": 1280,
+      "height": 800,
+      "channels": 3,
+      "size": 132820
+    },
+    {
+      "file": "marquee-1400x560.png",
+      "width": 1400,
+      "height": 560,
+      "channels": 3,
+      "size": 178858
+    },
+    {
+      "file": "small-promo-440x280.png",
+      "width": 440,
+      "height": 280,
+      "channels": 3,
+      "size": 20366
+    },
+    {
+      "file": "suggestions-detail.png",
+      "width": 946,
+      "height": 406,
+      "channels": 3,
+      "size": 43154
+    },
+    {
+      "file": "workspace-close-390-preview.png",
+      "width": 390,
+      "height": 844,
+      "channels": 3,
+      "size": 59881
+    }
+  ]
+}
