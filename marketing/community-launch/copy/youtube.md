@@ -22,7 +22,7 @@ Tabosmart processes browsing data locally in your Chrome profile. Optional on-de
 
 Saving keeps URLs, not offline pages. Recovery reopens URLs, not unsaved forms or edits.
 
-Chrome Web Store submission is being prepared. The website will link to the store once the extension is available.
+Tabosmart 0.3.0 is our first feedback release. Your experiences and ideas will help shape the path to 1.0.0.
 
 Shown: actual extension interface with example browsing data. Narration uses an AI-generated version of my own voice, with my permission. Captions are included.
 

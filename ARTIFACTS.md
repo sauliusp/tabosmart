@@ -19,7 +19,7 @@
 | Privacy policy | `docs/PRIVACY.md` |
 | Ownership verification, Featured nomination and Product Hunt copy | `marketing/community-launch/copy/post-approval-launch.md` |
 
-The Store screenshots and video show the actual interface with example browsing data. They intentionally precede the favicon update. The fifth screenshot and video ending invite useful feedback at https://tabosmart.featurebase.app/.
+The Store screenshots were regenerated from the 0.3.0 source with example browsing data. The video retains its original demonstration footage. The fifth screenshot and video ending invite useful feedback at https://tabosmart.featurebase.app/.
 
 Local verification on 9 September 2026: 366 unit tests passed; extension checks and packaging passed; isolated Chromium integration, favicon, installation-guide and accessibility checks passed; website production build and type checks passed. Optional real model inference and Chrome Web Store publication remain separate checks. Browser QA reports can be regenerated under `qa/`; personal browser records and the narration reference are not part of this public source tree.
 

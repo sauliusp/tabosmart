@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "0.3.0",
   "source": "Exact source UI with synthetic browsing fixtures. No invented AI readiness or performance evidence. Five ordered story cards.",
   "files": [
     {
@@ -7,21 +7,21 @@
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "bytes": 104705
+      "bytes": 105106
     },
     {
       "file": "02-keep-the-possibility.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "bytes": 119114
+      "bytes": 119522
     },
     {
       "file": "03-always-your-call.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "bytes": 158390
+      "bytes": 159012
     },
     {
       "file": "04-local-ai-optional.png",
@@ -35,14 +35,14 @@
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "bytes": 183751
+      "bytes": 166067
     },
     {
       "file": "marquee-1400x560.png",
       "width": 1400,
       "height": 560,
       "channels": 3,
-      "bytes": 96843
+      "bytes": 97706
     },
     {
       "file": "small-promo-440x280.png",
