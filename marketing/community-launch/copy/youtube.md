@@ -1,6 +1,6 @@
 # YouTube publication
 
-Published publicly on 8 September 2026 on Saulius Petreikis, alongside HistoryOut and TabShow.
+Published publicly on 8 September 2026 on Saulius’s channel, alongside HistoryOut and TabShow.
 
 Video: https://youtu.be/pftCdoldqAw
 Channel: https://www.youtube.com/@Saulius212
