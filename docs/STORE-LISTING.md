@@ -1,4 +1,4 @@
-# Tabosmart 0.9.0 · Community launch
+# Tabosmart 0.3.0 · Community launch
 
 ## Name
 Tabosmart
@@ -30,7 +30,7 @@ LOCAL AI IS A COMPLEMENT
 Core suggestions work without AI. On supported Chrome devices, optional AI can propose additional relationships, suggest group names and choose clearer wording for measured explanations. Model input is processed on your device. Chrome may need an initial model download; availability varies by browser, device and language. Setup is an explicit action when a download is required. Assistance is enabled by default for fresh workspaces, and you can turn it off. AI never approves a tab action.
 
 HELP SHAPE WHAT COMES NEXT
-Tabosmart is early. The intention is to build it with the people using it. A confusing suggestion, a missing connection, the one change that would make your day easier: tell us.
+Tabosmart 0.3.0 is our first feedback release. Your experiences and ideas will help shape the path to 1.0.0. A confusing suggestion, a missing connection, the one change that would make your day easier: tell us.
 
 Share an idea, report a problem or vote on what matters:
 https://tabosmart.featurebase.app/
