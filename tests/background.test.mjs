@@ -3032,3 +3032,56 @@ test("non-web inventory supports focus and cached reads but never save or close"
   f.mutate((tabs) => tabs.splice(1, 1));
   assert.equal((await b.handle({ type: "snapshot" })).tabs.length, 4);
 });
+
+test("non-web inventory changes preserve in-flight and registered web discoveries", async () => {
+  const f = fixture([
+    tab(1, {
+      url: "https://xeno.test/",
+      title: "Restoring a theremin oscillator",
+    }),
+    tab(2, {
+      url: "https://yarrow.test/",
+      title: "Repairing heterodyne pitch circuitry",
+    }),
+    tab(3, {
+      url: "chrome-extension://test-id/index.html",
+      title: "Suggestions · Tabosmart",
+    }),
+  ]);
+  const b = await enabled(f);
+  const base = await b.handle({ type: "settings", patch: { aiEnabled: true } });
+  const group = {
+    name: "Theremin restoration",
+    relationship: "task",
+    members: base.tabs
+      .filter((t) => t.reviewable)
+      .map((t) => ({ id: t.id, evidence: t.title })),
+  };
+  f.mutate((tabs) => {
+    tabs[2].title = "Open tabs · Tabosmart";
+  });
+  const enriched = await b.handle({
+    type: "discoverGroups",
+    key: discoveryKey(base),
+    tabIds: [1, 2],
+    groups: [group],
+  });
+  assert.equal(enriched.ok, true);
+  assert.equal(enriched.suggestions[0].aiDiscovered, true);
+  const suggestionId = enriched.suggestions[0].id;
+  f.mutate((tabs) => {
+    tabs[2].title = "Suggestions · Tabosmart";
+    tabs.push(tab(4, { url: "file:///tmp/notes.html" }));
+  });
+  const changed = await b.handle({ type: "snapshot" });
+  assert.equal(changed.tabs.length, 4);
+  assert.equal(changed.suggestions[0].id, suggestionId);
+  f.mutate((tabs) => {
+    tabs[0].url = "https://changed.test/";
+  });
+  const stale = await b.handle({ type: "snapshot" });
+  assert.equal(
+    stale.suggestions.some((s) => s.id === suggestionId),
+    false,
+  );
+});

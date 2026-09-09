@@ -32,6 +32,9 @@ export function discoveryKey(snapshot) {
     !!snapshot?.settings?.aiEnabled,
     snapshot?.settings?.groupNameLanguage || "auto",
     (snapshot?.tabs || [])
+      // Switch-only inventory pages do not participate in discovery. In
+      // particular, changing the workspace's own title must not clear results.
+      .filter((t) => t.reviewable !== false)
       .map((t) => [
         t.id,
         t.url,

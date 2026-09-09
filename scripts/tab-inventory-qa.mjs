@@ -30,7 +30,7 @@ await fs.writeFile(
 );
 await fs.writeFile(
   path.join(other, "fixture.js"),
-  'chrome.runtime.onInstalled.addListener(() => {});',
+  "chrome.runtime.onInstalled.addListener(() => {});",
 );
 const local = path.join(temporary, "local.html");
 await fs.writeFile(
@@ -231,6 +231,9 @@ try {
       snapshotRevision: 1,
     };
     chrome.runtime.sendMessage = async () => structuredClone(window.qaSnapshot);
+    chrome.runtime.onMessage.addListener = (listener) => {
+      window.qaSnapshotListener = listener;
+    };
   }, synthetic);
   await ui.goto(`chrome-extension://${id}/index.html`);
   await ui.locator('[role="tablist"]').waitFor();
@@ -253,6 +256,33 @@ try {
     check(`Filter ${type} shows exactly the matching engine suggestions`);
   };
   await assertFilter("all");
+  for (const type of ["group", "duplicate", "inactive"]) {
+    await ui.locator(`.check-filter[data-suggestion-filter="${type}"]`).focus();
+    for (const state of ["checking", "idle"]) {
+      await ui.evaluate((state) => {
+        window.qaSnapshot.evaluation = {
+          ...window.qaSnapshot.evaluation,
+          state,
+        };
+        window.qaSnapshot.snapshotRevision++;
+        window.qaSnapshotListener({ type: "snapshotChanged" });
+      }, state);
+      await ui.waitForFunction(
+        (state) =>
+          document
+            .querySelector("#workspace-check")
+            .classList.contains("is-checking") ===
+          (state === "checking"),
+        state,
+      );
+      check(
+        `Summary ${type} retains keyboard focus during ${state} update`,
+        await ui
+          .locator(`.check-filter[data-suggestion-filter="${type}"]`)
+          .evaluate((el) => el === document.activeElement),
+      );
+    }
+  }
   for (const type of ["group", "duplicate", "inactive"]) {
     await ui.locator(`.check-filter[data-suggestion-filter="${type}"]`).click();
     await assertFilter(type);
