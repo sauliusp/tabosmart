@@ -100,11 +100,35 @@ const navNames = {
 };
 function notify(message, error = false) {
   const el = $("#toast");
+  el.setAttribute("role", error ? "alert" : "status");
+  el.setAttribute("aria-live", error ? "assertive" : "polite");
   el.textContent = message;
   el.classList.toggle("error", error);
   el.hidden = false;
+  raiseNotification(true);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (el.hidden = true), error ? 10000 : 6000);
+  toastTimer = setTimeout(
+    () => {
+      if (el.matches(":popover-open")) el.hidePopover();
+      el.hidden = true;
+    },
+    error ? 10000 : 6000,
+  );
+}
+function raiseNotification(force = false) {
+  const el = $("#toast");
+  const parent = dialog.open ? dialog : document.body;
+  // A modal makes the rest of the document inert. Keep its live region inside
+  // the dialog, then promote the popover above the dialog and its backdrop.
+  if (force || el.parentElement !== parent) {
+    if (el.matches(":popover-open")) el.hidePopover();
+    if (el.parentElement !== parent) parent.append(el);
+  }
+  if (!el.hidden && !el.matches(":popover-open")) el.showPopover();
+}
+function showDialog() {
+  dialog.showModal();
+  raiseNotification(true);
 }
 async function api(type, args = {}) {
   if (!globalThis.chrome?.runtime?.sendMessage)
@@ -387,17 +411,21 @@ function suggestionFiltersMarkup() {
 }
 function selectSuggestionFilter(type) {
   if (!Object.hasOwn(suggestionFilters, type)) return;
+  if (type !== suggestionFilter) stopEnhancement();
   suggestionFilter = type;
   renderSuggestions();
   $(`#filter-${type}`).focus({ preventScroll: true });
   $(".suggestion-filters").scrollIntoView({ block: "nearest" });
   void runVisibleAI();
 }
-function renderSuggestions() {
-  const count = data.suggestions.length;
-  const visible = data.suggestions.filter(
+function visibleSuggestions() {
+  return data.suggestions.filter(
     (s) => suggestionFilter === "all" || s.type === suggestionFilter,
   );
+}
+function renderSuggestions() {
+  const count = data.suggestions.length;
+  const visible = visibleSuggestions();
   main.innerHTML =
     heading(
       "A little more headspace.",
@@ -562,7 +590,7 @@ function openReview(tabs, suggestion = null) {
     namingPending: false,
   };
   renderReview();
-  dialog.showModal();
+  showDialog();
   void syncProactiveNames();
   updateReviewSelection();
 }
@@ -643,7 +671,7 @@ function confirmDialog(title, body, button, handler) {
   $("#dialog-content").innerHTML =
     `<div class="dialog-head"><h2 id="dialog-title">${esc(title)}</h2><button class="dismiss" data-close-dialog aria-label="Cancel">${icon("close")}</button></div><div class="dialog-body"><p class="small muted">${esc(body)}</p></div><div class="dialog-footer"><button class="button secondary" data-close-dialog>Cancel</button><button class="button danger" id="confirm-general" data-mutate>${esc(button)}</button></div>`;
   $("#confirm-general").addEventListener("click", handler);
-  dialog.showModal();
+  showDialog();
   void syncProactiveNames();
 }
 function updateAIChip() {
@@ -1116,8 +1144,9 @@ async function enhanceVisibleReasons() {
   enhancementController = controller;
   const epoch = aiWorkEpoch;
   try {
-    for (const suggestion of data.suggestions.slice(0, 5)) {
+    for (const suggestion of visibleSuggestions().slice(0, 5)) {
       if (
+        controller.signal.aborted ||
         document.hidden ||
         dialog.open ||
         !data.settings.enabled ||
@@ -1152,6 +1181,10 @@ async function enhanceVisibleReasons() {
     enhancementRun = false;
     if (enhancementController === controller) enhancementController = null;
     if (epoch === aiWorkEpoch) await refreshAI();
+    // A filter change can arrive while the previous pass is unwinding. Resume
+    // after releasing its slot so the newly visible cards get their turn.
+    if (controller.signal.aborted && epoch === aiWorkEpoch)
+      void enhanceVisibleReasons();
   }
 }
 
@@ -1578,6 +1611,7 @@ document.addEventListener("input", (event) => {
   }
 });
 dialog.addEventListener("close", () => {
+  raiseNotification();
   review = null;
   if (data && !busy) renderPreservingFocus();
   void runVisibleAI();

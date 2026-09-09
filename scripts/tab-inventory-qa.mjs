@@ -348,6 +348,205 @@ try {
     path: path.join(root, "qa/screenshots/suggestion-filters-mobile.png"),
     fullPage: true,
   });
+  // Keep the first wording request pending, then select a type beyond the
+  // first five overall cards. Model calls are synthetic; UI and engine are real.
+  const aiState = createState(now);
+  aiState.settings.enabled = true;
+  aiState.settings.aiEnabled = true;
+  aiState.consentAt = now;
+  const aiRows = [];
+  for (let group = 0; group < 5; group++) {
+    for (let member = 0; member < 3; member++) {
+      aiRows.push({
+        ...row(
+          100 + group * 3 + member,
+          `https://garden${group}.test/plan/${member}`,
+          `Garden studio design ${member}`,
+        ),
+        windowId: group + 1,
+      });
+    }
+  }
+  aiRows.push({
+    ...row(200, "https://reference.test/exact", "Reference notes"),
+    windowId: 6,
+  });
+  aiRows.push({
+    ...row(201, "https://reference.test/exact", "Reference notes"),
+    windowId: 6,
+  });
+  observeTabs(aiState, aiRows, now);
+  const aiSnapshot = makeSnapshot(aiState, aiRows, now);
+  aiSnapshot.suggestions.sort(
+    (a, b) => Number(b.type === "group") - Number(a.type === "group"),
+  );
+  assert.equal(
+    aiSnapshot.suggestions.filter((s) => s.type === "group").length,
+    5,
+  );
+  const aiDuplicate = aiSnapshot.suggestions.find(
+    (s) => s.type === "duplicate",
+  );
+  assert.ok(aiSnapshot.suggestions.indexOf(aiDuplicate) >= 5);
+  const aiUI = await browser.newPage();
+  aiUI.on("pageerror", (e) => errors.push(e.message));
+  await aiUI.addInitScript((snapshot) => {
+    window.qaWordingRequests = [];
+    window.qaWordingAborted = false;
+    chrome.runtime.sendMessage = async (message) =>
+      window.qaFailGroup && message.type === "group"
+        ? { ok: false, error: "Could not group these test tabs." }
+        : {
+            ...structuredClone(snapshot),
+            ok: true,
+            snapshotEpoch: "wording-fixture",
+            snapshotRevision: 1,
+          };
+    chrome.runtime.onMessage.addListener = () => {};
+    Object.defineProperty(globalThis, "LanguageModel", {
+      configurable: true,
+      value: {
+        availability: async () => "available",
+        async create() {
+          return {
+            prompt(text, { signal }) {
+              if (text.includes("UNTRUSTED_CANDIDATES_JSON")) {
+                const candidates = JSON.parse(
+                  text.split("UNTRUSTED_CANDIDATES_JSON:\n")[1],
+                );
+                window.qaWordingRequests.push(candidates[0].text);
+                if (window.qaWordingRequests.length === 1) {
+                  signal.addEventListener(
+                    "abort",
+                    () => {
+                      window.qaWordingAborted = true;
+                    },
+                    { once: true },
+                  );
+                  return new Promise(() => {});
+                }
+                return Promise.resolve("1");
+              }
+              if (text.includes("UNTRUSTED_DISCOVERY_METADATA_JSON"))
+                return Promise.resolve('{"groups":[],"hints":[]}');
+              return Promise.resolve("Garden studio");
+            },
+            destroy() {},
+          };
+        },
+      },
+    });
+  }, aiSnapshot);
+  await aiUI.goto(`chrome-extension://${id}/index.html`);
+  await aiUI.waitForFunction(() => window.qaWordingRequests.length === 1);
+  await aiUI.locator("#filter-duplicate").click();
+  await aiUI.waitForFunction(() => window.qaWordingAborted, null, {
+    timeout: 3000,
+  });
+  await aiUI.waitForFunction(
+    ({ id, wording }) =>
+      document.querySelector(`[data-reason="${id}"]`)?.textContent === wording,
+    { id: aiDuplicate.id, wording: aiDuplicate.explanationVariants[1] },
+    { timeout: 5000 },
+  );
+  check(
+    "Changing filters cancels hidden-card wording and enhances the visible type beyond the first five",
+    await aiUI.evaluate(
+      (reason) =>
+        window.qaWordingRequests.length === 2 &&
+        window.qaWordingRequests[1] === reason,
+      aiDuplicate.reason,
+    ),
+  );
+  await aiUI.locator("#filter-group").click();
+  await aiUI.locator(".suggestion-card [data-review]").first().click();
+  await aiUI.locator("#ai-name").click();
+  await aiUI
+    .locator("#toast")
+    .filter({ hasText: "Suggested name updated" })
+    .waitFor({ state: "visible" });
+  const notificationOnTop = () =>
+    aiUI.locator("#toast").evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return (
+        el.matches(":popover-open") &&
+        document.elementFromPoint(
+          rect.x + rect.width / 2,
+          rect.y + rect.height / 2,
+        ) === el
+      );
+    });
+  check(
+    "Rename success notification is above the open modal",
+    await notificationOnTop(),
+  );
+  check(
+    "Showing a notification keeps keyboard focus in the modal",
+    await aiUI
+      .locator("#ai-name")
+      .evaluate((el) => el === document.activeElement),
+  );
+  await aiUI.evaluate(() => {
+    window.qaFailGroup = true;
+  });
+  await aiUI.locator("#apply-group").click();
+  await aiUI.locator("#toast.error").waitFor({ state: "visible" });
+  check(
+    "Action error notification is above the modal and remains in its accessible subtree",
+    (await notificationOnTop()) &&
+      (await aiUI
+        .locator("#toast")
+        .evaluate(
+          (el) =>
+            el.closest("dialog")?.open && el.getAttribute("role") === "alert",
+        )),
+  );
+  await aiUI.screenshot({
+    path: path.join(root, "qa/screenshots/modal-notification.png"),
+    fullPage: true,
+  });
+  await aiUI.locator("dialog [data-close-dialog]").click();
+  await aiUI.locator("dialog").waitFor({ state: "hidden" });
+  await aiUI.waitForFunction(() => {
+    const el = document.querySelector("#toast");
+    return el.parentElement === document.body && el.matches(":popover-open");
+  });
+  check(
+    "Notification remains visible when its modal closes",
+    await notificationOnTop(),
+  );
+  await aiUI.locator(".suggestion-card [data-review]").first().click();
+  check(
+    "An existing notification stays above a newly opened modal",
+    await notificationOnTop(),
+  );
+  await aiUI.setViewportSize({ width: 390, height: 844 });
+  check(
+    "Modal notification fits the mobile viewport",
+    (await notificationOnTop()) &&
+      (await aiUI.locator("#toast").evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return (
+          r.left >= 0 &&
+          r.right <= innerWidth &&
+          r.top >= 0 &&
+          r.bottom <= innerHeight
+        );
+      })),
+  );
+  await aiUI.screenshot({
+    path: path.join(root, "qa/screenshots/modal-notification-mobile.png"),
+    fullPage: true,
+  });
+  await aiUI.locator("#toast").waitFor({ state: "hidden", timeout: 12000 });
+  check(
+    "Notification timeout removes only the notification from the top layer",
+    (await aiUI
+      .locator("#toast")
+      .evaluate((el) => !el.matches(":popover-open"))) &&
+      (await aiUI.locator("dialog").isVisible()),
+  );
+  await aiUI.close();
   check("No page errors", errors.length === 0);
   console.log(
     JSON.stringify(

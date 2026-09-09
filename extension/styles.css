@@ -877,6 +877,10 @@ main:focus {
 }
 .toast {
   position: fixed;
+  top: auto;
+  right: auto;
+  margin: 0;
+  border: 0;
   bottom: 26px;
   left: calc(50% + 115px);
   transform: translateX(-50%);
@@ -890,6 +894,10 @@ main:focus {
   font-size: 12px;
   line-height: 1.6;
   z-index: 20;
+}
+dialog > .toast {
+  left: 50%;
+  max-width: min(650px, calc(100vw - 30px));
 }
 .toast.error {
   background: #805039;
