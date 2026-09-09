@@ -11,7 +11,7 @@
 3. The installation guide opens once. Choose **Open my workspace**, or use the Tabosmart toolbar icon.
 4. Review a suggestion, check its explanation and choose which tabs belong. Nothing groups or closes without your approval.
 
-The current source version is **1.5.0**. Existing installations can reload Tabosmart at `chrome://extensions`. Updates do not automatically open the installation guide; it stays available through **Quick start guide** in the workspace.
+The current source version is **1.6.0**. Existing installations can reload Tabosmart at `chrome://extensions`. Updates do not automatically open the installation guide; it stays available through **Quick start guide** in the workspace.
 
 ## What it does
 
@@ -47,7 +47,7 @@ npm run check
 npm run pack
 ```
 
-The extension has no runtime dependencies. The Chrome package is generated at `dist/tabosmart-1.5.0-chrome.zip`. For isolated Chromium integration and accessibility checks:
+The extension has no runtime dependencies. The Chrome package is generated at `dist/tabosmart-1.6.0-chrome.zip`. For isolated Chromium integration and accessibility checks:
 
 ```sh
 npx playwright install chromium
@@ -66,4 +66,4 @@ The source includes the five Store screenshots, both promotional tiles, final vi
 
 ## Release status
 
-The website and feedback board are public. Chrome Web Store submission is being prepared; a local package is not a published Store release. See [listing copy and reviewer instructions](docs/STORE-LISTING.md).
+The website and feedback board are public. Chrome Web Store review is pending; a local package is not a published Store release. See [listing copy and reviewer instructions](docs/STORE-LISTING.md).
