@@ -1,6 +1,6 @@
 # Historical Chrome Web Store preparation notes
 
-For the current 1.5.0 campaign, use [the artifact index](../ARTIFACTS.md) and [current listing copy](STORE-LISTING.md). All five current screenshots and both promotional tiles are in `marketing/community-launch/store/`. The historical paths below refer to earlier local assets, which are not included in the public repository.
+For the current 1.6.0 campaign, use [the artifact index](../ARTIFACTS.md) and [current listing copy](STORE-LISTING.md). All five current screenshots and both promotional tiles are in `marketing/community-launch/store/`. The historical paths below refer to earlier local assets, which are not included in the public repository.
 
 Official references checked on 8 September 2026. These notes describe Tabosmart 1.3.0 source. Source tests and current capture provenance are verified. Package reports separately establish archive contents and SHA-256 after packaging. This is not a Store submission, approval or publication record.
 

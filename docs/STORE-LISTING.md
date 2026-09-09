@@ -1,4 +1,4 @@
-# Tabosmart 1.5.0 · Community launch
+# Tabosmart 1.6.0 · Community launch
 
 ## Name
 Tabosmart

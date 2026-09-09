@@ -1,6 +1,6 @@
 # Tabosmart privacy policy
 
-**Effective date: 8 September 2026. Extension version: 1.5.0.**
+**Effective date: 9 September 2026. Extension version: 1.6.0.**
 
 Publisher: Saulius Petreikis. Privacy contact: saulius.developer@gmail.com. This policy covers the Tabosmart extension, its website and voluntary feedback links.
 
