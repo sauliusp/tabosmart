@@ -196,7 +196,8 @@ test("close suggestions exclude active, pinned, audio, protected, incognito, and
     old.flatMap((item) => item.tabIds),
     [1],
   );
-  assert.equal(makeSnapshot(s, tabs, T).tabs.length, 5);
+  assert.equal(makeSnapshot(s, tabs, T).tabs.length, 7);
+  assert.equal(makeSnapshot(s, tabs, T).evaluationSummary.webTabsChecked, 5);
 });
 
 test("grouping stays in its original window and excludes existing groups", () => {
@@ -1111,4 +1112,66 @@ test("duplicate history counts an exact URL once despite repeated copies and a r
 test("paused snapshot does not claim a check or expose a previous summary", () => {
   const s = createState(T);
   assert.equal(makeSnapshot(s, [tab(1)], T).evaluationSummary, null);
+});
+
+test("inventory counts non-web tabs separately without observing or suggesting them", () => {
+  const s = state();
+  const urls = [
+    "http://localhost:3000/",
+    "https://example.test/",
+    "file:///tmp/notes.html",
+    "chrome-extension://other/index.html",
+    "chrome://extensions/",
+    "chrome://newtab/",
+    "about:blank",
+  ];
+  const rows = urls.map((url, i) => tab(i + 1, url));
+  rows.push(tab(8, "", { pendingUrl: "file:///tmp/loading.html" }));
+  rows.push(tab(9, "chrome://settings/", { incognito: true }));
+  rows.push(tab(-1, "chrome://settings/"));
+  observeTabs(s, rows, T);
+  const snap = makeSnapshot(s, rows, T + 9 * DAY);
+  assert.deepEqual(
+    snap.tabs.map((t) => t.id),
+    [1, 2, 3, 4, 5, 6, 7, 8],
+  );
+  assert.equal(snap.evaluationSummary.openTabs, 8);
+  assert.equal(snap.evaluationSummary.webTabsChecked, 2);
+  assert.equal(snap.evaluationSummary.switchOnlyTabs, 6);
+  assert.deepEqual(Object.keys(s.observations), ["1", "2"]);
+  assert.deepEqual(Object.keys(s.urlHistory), urls.slice(0, 2));
+  assert.equal(snap.tabs[2].pageType, "Local file");
+  assert.equal(snap.tabs[3].pageType, "Extension page");
+  assert.equal(snap.tabs[7].url, "file:///tmp/loading.html");
+  assert.ok(snap.suggestions.every((s) => s.tabIds.every((id) => id <= 2)));
+  for (const action of ["save", "close", "protect", "group"]) {
+    assert.throws(() => validateSelection(rows, s, [3], snap.tabs, action, T), {
+      code: "STALE",
+    });
+  }
+  s.settings.enabled = false;
+  assert.deepEqual(makeSnapshot(s, rows, T).tabs, []);
+});
+
+test("inventory omits credential-bearing, payload and oversized URLs without losing tabs", () => {
+  const s = state();
+  const rows = [
+    "https://user:private-password@example.test/",
+    "data:text/html,private-payload",
+    "blob:https://example.test/private-token",
+    "javascript:alert(1)",
+    "custom:private-value",
+    "file:///" + "x".repeat(17000),
+  ].map((url, i) => tab(i + 1, url));
+  rows.push(tab(7, "", { title: "" }));
+  const snap = makeSnapshot(s, rows, T);
+  assert.equal(snap.tabs.length, rows.length);
+  assert.ok(snap.tabs.every((t) => t.url === "" && t.reviewable === false));
+  assert.equal(snap.evaluationSummary.webTabsChecked, 0);
+  assert.deepEqual(snap.suggestions, []);
+  assert.doesNotMatch(
+    JSON.stringify(snap),
+    /private-password|private-payload|private-token|private-value|alert\(1\)/,
+  );
+  assert.ok(snap.tabs[6].title);
 });

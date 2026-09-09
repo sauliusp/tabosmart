@@ -877,6 +877,10 @@ main:focus {
 }
 .toast {
   position: fixed;
+  top: auto;
+  right: auto;
+  margin: 0;
+  border: 0;
   bottom: 26px;
   left: calc(50% + 115px);
   transform: translateX(-50%);
@@ -890,6 +894,10 @@ main:focus {
   font-size: 12px;
   line-height: 1.6;
   z-index: 20;
+}
+dialog > .toast {
+  left: 50%;
+  max-width: min(650px, calc(100vw - 30px));
 }
 .toast.error {
   background: #805039;
@@ -1672,10 +1680,61 @@ input[type="checkbox"] {
   color: #285d53;
   font-size: 10px;
 }
-.check-results > span {
+.check-results > span,
+.check-filter {
   display: inline-flex;
   gap: 5px;
   align-items: center;
+}
+.check-filter {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.check-filter:hover,
+.check-filter[aria-pressed="true"] {
+  background: #ffffff80;
+  border-color: #91ae80;
+}
+.suggestion-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 22px 0;
+}
+.suggestion-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #d8ddcf;
+  border-radius: 9px;
+  background: transparent;
+  color: #285d53;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.suggestion-filters button:hover {
+  background: #edf2e5;
+}
+.suggestion-filters [aria-selected="true"] {
+  background: #deef94;
+  border-color: #91ae80;
+  color: #183c35;
+  font-weight: 700;
+}
+.suggestion-filters span {
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #ffffff80;
+  text-align: center;
+  font-size: 11px;
 }
 .check-results svg,
 .check-ai-note svg {

@@ -2599,7 +2599,8 @@ test("cold-start alarm failures preserve readable data, opt-out and erasure with
       // get/create failure. Otherwise the unavailable API keeps its warning.
       if (operation === "clearData" && method !== "clear")
         assert.equal(result.schedulingWarning, null);
-      else assert.match(result.schedulingWarning, /privacy controls still work/);
+      else
+        assert.match(result.schedulingWarning, /privacy controls still work/);
       if (operation === "settings") {
         assert.equal(result.settings.aiEnabled, false);
         assert.equal(f.local[STORAGE_KEY].settings.aiEnabled, false);
@@ -2979,4 +2980,108 @@ test("concurrent cached readers see committed user state throughout a pending or
       else if (operation === "forget") assert.equal(after.saved.length, 0);
     }
   }
+});
+
+test("non-web inventory supports focus and cached reads but never save or close", async () => {
+  const rows = [
+    tab(1),
+    tab(2, { url: "chrome-extension://other/private.html" }),
+    tab(3, { url: "file:///tmp/notes.html", windowId: 2 }),
+    tab(4, { url: "chrome://settings/" }),
+    tab(5, { url: "about:blank" }),
+    tab(6, { url: "chrome://newtab/", incognito: true }),
+    tab(7, { url: "file:///tmp/popup.html", windowType: "popup" }),
+  ];
+  const f = fixture(rows),
+    b = await enabled(f);
+  const snap = await b.handle({ type: "snapshot" });
+  assert.deepEqual(
+    snap.tabs.map((t) => t.id),
+    [1, 2, 3, 4, 5],
+  );
+  assert.equal(snap.evaluationSummary.webTabsChecked, 1);
+  assert.equal(snap.evaluationSummary.openTabs, 5);
+  assert.equal(f.local[STORAGE_KEY].cached.tabs.length, 5);
+  for (const id of [2, 3, 4, 5]) {
+    await b.handle({ type: "focus", tabId: id });
+    assert.ok(
+      f.calls.some((c) => c[0] === "update" && c[1] === id && c[2].active),
+    );
+    for (const type of ["save", "close", "protect"]) {
+      assert.equal(
+        (
+          await b.handle({
+            type,
+            tabIds: [id],
+            expectedTabs: snap.tabs,
+            protected: true,
+            confirmed: true,
+          })
+        ).code,
+        "STALE",
+      );
+    }
+  }
+  assert.ok(
+    f.calls.some((c) => c[0] === "window" && c[1] === 2 && c[2].focused),
+  );
+  for (const id of [6, 7, 999])
+    assert.equal((await b.handle({ type: "focus", tabId: id })).code, "STALE");
+  assert.equal(f.calls.filter((c) => c[0] === "remove").length, 0);
+  assert.equal(f.local[STORAGE_KEY].saved.length, 0);
+  f.mutate((tabs) => tabs.splice(1, 1));
+  assert.equal((await b.handle({ type: "snapshot" })).tabs.length, 4);
+});
+
+test("non-web inventory changes preserve in-flight and registered web discoveries", async () => {
+  const f = fixture([
+    tab(1, {
+      url: "https://xeno.test/",
+      title: "Restoring a theremin oscillator",
+    }),
+    tab(2, {
+      url: "https://yarrow.test/",
+      title: "Repairing heterodyne pitch circuitry",
+    }),
+    tab(3, {
+      url: "chrome-extension://test-id/index.html",
+      title: "Suggestions · Tabosmart",
+    }),
+  ]);
+  const b = await enabled(f);
+  const base = await b.handle({ type: "settings", patch: { aiEnabled: true } });
+  const group = {
+    name: "Theremin restoration",
+    relationship: "task",
+    members: base.tabs
+      .filter((t) => t.reviewable)
+      .map((t) => ({ id: t.id, evidence: t.title })),
+  };
+  f.mutate((tabs) => {
+    tabs[2].title = "Open tabs · Tabosmart";
+  });
+  const enriched = await b.handle({
+    type: "discoverGroups",
+    key: discoveryKey(base),
+    tabIds: [1, 2],
+    groups: [group],
+  });
+  assert.equal(enriched.ok, true);
+  assert.equal(enriched.suggestions[0].aiDiscovered, true);
+  const suggestionId = enriched.suggestions[0].id;
+  f.mutate((tabs) => {
+    tabs[2].title = "Suggestions · Tabosmart";
+    tabs.push(tab(4, { url: "file:///tmp/notes.html" }));
+  });
+  const changed = await b.handle({ type: "snapshot" });
+  assert.equal(changed.tabs.length, 4);
+  assert.equal(changed.suggestions[0].id, suggestionId);
+  f.mutate((tabs) => {
+    tabs[0].url = "https://changed.test/";
+  });
+  const stale = await b.handle({ type: "snapshot" });
+  assert.equal(
+    stale.suggestions.some((s) => s.id === suggestionId),
+    false,
+  );
 });
