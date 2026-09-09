@@ -18,7 +18,7 @@ Tabosmart helps people make a few useful decisions about an overloaded tab bar. 
 
 A short installation guide answers why the extension is useful and shows where to start. The workspace includes clear privacy controls, website favicons, keyboard-accessible controls, and an optional community feedback link. Core features work without an account or payment. Browsing records stay in the Chrome profile. Optional local AI offers additional help on supported devices, while the standard suggestions remain useful when AI is unavailable.
 
-The listing uses actual interface screenshots, a concise narrated demonstration, and specific explanations of privacy and recovery limits. Tabosmart is being developed with community feedback, with a public place for people to describe the task they were trying to complete and suggest improvements.
+The listing uses actual interface screenshots, a concise narrated demonstration, and specific explanations of privacy and recovery limits. Tabosmart 0.3.0 is the first feedback release, with user experiences guiding the path to 1.0.0. It is being developed with community feedback, with a public place for people to describe the task they were trying to complete and suggest improvements.
 
 Official criteria: https://developer.chrome.com/docs/webstore/discovery/.
 

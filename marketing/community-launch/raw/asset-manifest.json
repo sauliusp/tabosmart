@@ -1,18 +1,18 @@
 {
-  "createdAt": "2026-09-08T13:12:33.172Z",
-  "version": "1.5.0",
+  "createdAt": "2026-09-09T11:52:59.800Z",
+  "version": "0.3.0",
   "source": "Screenshots render the extension source UI in a disposable localhost HTTP preview with a synthetic runtime snapshot. No extension, real browser profile or actual model is accessed. No model is mocked as ready; optional AI is unavailable in this preview. These are visual examples, not live behavioral or AI evidence.",
   "sourceHashes": {
-    "app.mjs": "79b080ebfa1e22d7b0099f668d6d57f406e197fc34a3a336db512f822680446e",
-    "index.html": "088431737ecfbce22cae4bf7579dd8f026683cc73120436bf91741f88855d667",
-    "styles.css": "ae11d129db6ac22c37e9f343b9dd0f9078a2aa115e43f7967ea5582ea7de3c30",
-    "core.mjs": "a483f2aaad23dac9f562fd5f7255af9a08b86957a65b9e64b436977cde2a5299",
+    "app.mjs": "c320542686e5888e0c7af38cfe0abae8bce6ba8beec7a53dc9401a3a9d99bc3a",
+    "index.html": "e5baac3feb720a4d11a3a9cf2ce7ca8b335f5264adde02e613c38732e36f3796",
+    "styles.css": "475711056672b7a19bdd1c3334f7f3f70893fb663f6527ddcaa7e7670d89367f",
+    "core.mjs": "c12518a9c415056b60e3d7001af8e555cac85b604142ce627ce0d88009b3a9f7",
     "topic-evidence.mjs": "a832ea4c93b4604442760c47dc473875e12ed98985c7b583ddba18e927f24796",
-    "group-discovery.mjs": "82c699cff5291c7aab449ad5633fecc2eec8e7b8ef05c57c72dee71ab6006b35",
-    "proactive-discovery.mjs": "9953ffadb411dcbca45a14ce66f7994966ad249e63c422cfb58f99b85f293c2f",
-    "local-ai.mjs": "ea20df5509e5735956075944788a8449eac64422d159c438118f01a25699c5b5",
-    "proactive-names.mjs": "0474b29f4549304da1b462fda54661bd65e56e23ce85ea9da134e57132af1062",
-    "ai-status-watch.mjs": "6b6a19929bcddf49bf60faad12a2fa013fde1ead6d819c636f4e003a3ac6c61b"
+    "group-discovery.mjs": "564856aa149b65f33b6f22c09d8f86ad0c36cfab75294f2ee4a87cf248af88d7",
+    "proactive-discovery.mjs": "d9a7c3bd2ff427e8e2708af83aed861d8885625d7d2a42fed781107dd904abbe",
+    "local-ai.mjs": "a6ae8ecc4cf495e869f7d7c8a00dbbbafd6d8779b4465bc5666c20c9b4437087",
+    "proactive-names.mjs": "948364a60727ae818a614030536c6944f85271b6d5a2397f473a6f51f5d42a47",
+    "ai-status-watch.mjs": "c71e03f0298271d04fee29faa3e0d4ede9c1f657e9844efdfdb04268ac2c9655"
   },
   "examples": {
     "openTabs": 100,
@@ -75,49 +75,49 @@
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "size": 131310
+      "size": 128108
     },
     {
       "file": "02-groups-with-a-reason.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "size": 179588
+      "size": 171122
     },
     {
       "file": "03-duplicates-your-decision.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "size": 183029
+      "size": 174010
     },
     {
       "file": "04-save-the-possibility.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "size": 98338
+      "size": 99120
     },
     {
       "file": "05-older-tabs-a-fresh-look.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "size": 187694
+      "size": 177507
     },
     {
       "file": "community-feedback.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "size": 139012
+      "size": 119149
     },
     {
       "file": "first-use-preview.png",
       "width": 1280,
       "height": 800,
       "channels": 3,
-      "size": 143782
+      "size": 138205
     },
     {
       "file": "local-ai-settings.png",
@@ -131,7 +131,7 @@
       "width": 1400,
       "height": 560,
       "channels": 3,
-      "size": 178858
+      "size": 180547
     },
     {
       "file": "small-promo-440x280.png",
@@ -143,16 +143,16 @@
     {
       "file": "suggestions-detail.png",
       "width": 946,
-      "height": 406,
+      "height": 407,
       "channels": 3,
-      "size": 43154
+      "size": 42777
     },
     {
       "file": "workspace-close-390-preview.png",
       "width": 390,
       "height": 844,
       "channels": 3,
-      "size": 59881
+      "size": 54499
     }
   ]
 }

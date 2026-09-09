@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tabosmart",
-  "version": "1.5.0",
+  "version": "0.3.0",
   "description": "Group tabs, review duplicates and save links for later. Local processing, optional on-device AI. Help shape what comes next.",
   "minimum_chrome_version": "120",
   "permissions": [

@@ -1,6 +1,6 @@
 # Architecture
 
-Tabosmart 1.5.0 is a dependency-free Manifest V3 extension. The source manifest requires tabs, tabGroups, storage, alarms, history and favicon. There are no host permissions, content scripts, scripting permission, bookmark access or remote executable assets.
+Tabosmart 0.3.0 is a dependency-free Manifest V3 extension. The source manifest requires tabs, tabGroups, storage, alarms, history and favicon. There are no host permissions, content scripts, scripting permission, bookmark access or remote executable assets.
 
 ## Components
 
@@ -98,7 +98,7 @@ The CSP blocks extension network connections. No page bodies, native bookmarks, 
 
 The current commands, counts and hashes are in [QA](QA.md) and [the final source report](../qa/final-source-checks.json). Core/backend tests and disposable HTTP UI integration use synthetic browser/model data. No personal profile, installed extension, real history or actual AI inference is exercised by the 1.4.0 checks. Historical 1.3.0 reports/source/screenshots remain under `qa/releases/1.3.0/`.
 
-## Installation guide and favicons in 1.5.0
+## Installation guide and favicons
 
 `installation.mjs` handles only fresh `onInstalled` events and opens the bundled welcome page once, coalescing concurrent events and persisting completion after a tab exists. Updates and browser startup do not open it. The workspace sidebar can reopen it manually. `favicons.mjs` constructs only Chrome profile-local `_favicon` URLs; unavailable icons use a neutral fallback. No external favicon service or website host permission is used.
 
