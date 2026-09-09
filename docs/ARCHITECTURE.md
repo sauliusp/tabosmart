@@ -1,6 +1,6 @@
 # Architecture
 
-Tabosmart 1.6.0 is a dependency-free Manifest V3 extension. The source manifest requires tabs, tabGroups, storage, alarms, history and favicon. There are no host permissions, content scripts, scripting permission, bookmark access or remote executable assets.
+Tabosmart 0.9.0 is a dependency-free Manifest V3 extension. The source manifest requires tabs, tabGroups, storage, alarms, history and favicon. There are no host permissions, content scripts, scripting permission, bookmark access or remote executable assets.
 
 ## Components
 

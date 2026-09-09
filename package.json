@@ -1,6 +1,6 @@
 {
   "name": "tabosmart",
-  "version": "1.6.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "description": "Local, thoughtful tab decluttering for Chrome",
