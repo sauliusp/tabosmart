@@ -27,6 +27,7 @@ import {
   validateSelection,
   sanitizeSettings,
   isWebTab,
+  isOpenTab,
   isWebURL,
   LIMITS,
   targetGroupIdentity,
@@ -663,7 +664,7 @@ export function createBackend(
       }
     } else if (type === "focus") {
       const tab = rawTabs.find((item) => item.id === message.tabId);
-      if (!tab || !isWebTab(tab))
+      if (!isOpenTab(tab))
         throw fault("This tab is no longer available.", "STALE");
       await api.windows.update(tab.windowId, { focused: true });
       await api.tabs.update(tab.id, { active: true });

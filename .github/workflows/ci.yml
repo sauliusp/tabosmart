@@ -20,6 +20,7 @@ jobs:
       - run: mkdir -p qa/screenshots
       - run: npx playwright install --with-deps chromium
       - run: npm run qa:browser
+      - run: npm run qa:workspace
       - run: npm run pack
   website:
     runs-on: ubuntu-latest

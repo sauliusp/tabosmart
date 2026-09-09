@@ -34,13 +34,11 @@ export const LIMITS = Object.freeze({
   storedTabs: 1000,
 });
 
+export function isOpenTab(tab) {
+  return Number.isInteger(tab?.id) && tab.id >= 0 && !tab.incognito;
+}
 export function isWebTab(tab) {
-  return (
-    Number.isInteger(tab?.id) &&
-    tab.id >= 0 &&
-    !tab.incognito &&
-    isWebURL(tab.url)
-  );
+  return isOpenTab(tab) && isWebURL(tab.url);
 }
 export function isWebURL(url) {
   if (typeof url !== "string" || url.length > 16384) return false;
@@ -522,6 +520,31 @@ export function observeTabs(
   return tabs.map((tab) => describeTab(tab, state, now));
 }
 export function describeTab(tab, state, now = Date.now()) {
+  const reviewable = isWebTab(tab);
+  // Inventory includes every regular tab. Only bounded, credential-free URLs
+  // are displayed; data/blob payloads and unknown schemes are never cached.
+  let url = reviewable ? tab.url : "";
+  let pageType = reviewable ? "Web page" : "Other page";
+  if (!reviewable) {
+    const candidate = tab.url || tab.pendingUrl;
+    try {
+      const parsed = new URL(candidate);
+      const types = {
+        "file:": "Local file",
+        "chrome-extension:": "Extension page",
+        "chrome:": "Chrome page",
+        "chrome-search:": "Chrome page",
+        "about:": "Browser page",
+      };
+      if (types[parsed.protocol]) {
+        pageType = types[parsed.protocol];
+        if (candidate.length <= 16384 && !parsed.username && !parsed.password)
+          url = candidate;
+      }
+    } catch {
+      // Chrome may not have a URL yet for a newly created tab.
+    }
+  }
   const record =
     state.observations[tab.id]?.url === tab.url
       ? state.observations[tab.id]
@@ -536,9 +559,11 @@ export function describeTab(tab, state, now = Date.now()) {
   );
   return {
     id: tab.id,
-    title: String(tab.title || domainOf(tab.url)).slice(0, 300),
-    url: tab.url,
-    domain: domainOf(tab.url),
+    title: String(tab.title || domainOf(url) || pageType).slice(0, 300),
+    url,
+    domain: domainOf(url),
+    reviewable,
+    pageType,
     windowId: tab.windowId,
     index: tab.index ?? 0,
     groupId: tab.groupId ?? -1,
@@ -997,11 +1022,11 @@ export function makeSnapshot(
   nativeGroups = [],
 ) {
   const tabs = state.settings.enabled
-    ? rawTabs.filter(isWebTab).map((tab) => describeTab(tab, state, now))
+    ? rawTabs.filter(isOpenTab).map((tab) => describeTab(tab, state, now))
     : [];
   const evaluationSummary = {};
   const suggestions = buildSuggestions(
-    tabs,
+    tabs.filter((tab) => tab.reviewable),
     state,
     now,
     evaluationSummary,
@@ -1020,7 +1045,12 @@ export function makeSnapshot(
     tabs,
     suggestions,
     evaluationSummary: state.settings.enabled
-      ? { ...evaluationSummary, checkedAt: now }
+      ? {
+          ...evaluationSummary,
+          openTabs: tabs.length,
+          switchOnlyTabs: tabs.filter((tab) => !tab.reviewable).length,
+          checkedAt: now,
+        }
       : null,
     saved: state.saved,
     recovery: state.recovery,

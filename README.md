@@ -15,6 +15,8 @@ The current source version is **1.5.0**. Existing installations can reload Tabos
 
 ## What it does
 
+- Lists, counts, searches and switches to all tabs in regular Chrome windows, including extension pages, local files, browser pages and Tabosmart itself. Incognito tabs are excluded. Non-web pages are labelled "Switch only"; suggestions, protection, saving and closing remain limited to HTTP(S) pages, including localhost sites.
+- Filters suggestions with All, Groups, Repeats and Older tabs. The summary counts select the matching filter; filter counts refer to suggestions, while the summary also shows affected duplicate and older tabs.
 - Suggests groups using titles, specific URL context, observed browsing patterns and grouping choices you confirm.
 - Explains each suggestion and lets you review its name and members.
 - Reviews exact repeated URLs and older tabs, with protections for pinned, audible, protected and Incognito tabs.
@@ -49,6 +51,7 @@ The extension has no runtime dependencies. The Chrome package is generated at `d
 ```sh
 npx playwright install chromium
 npm run qa:browser
+npm run qa:workspace
 ```
 
 The website lives in `website/`:

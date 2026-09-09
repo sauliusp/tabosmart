@@ -61,6 +61,7 @@ let data = null,
   capabilities = { names: { state: "checking", label: "Checking" } },
   busy = false,
   search = "",
+  suggestionFilter = "all",
   selection = new Set(),
   review = null,
   toastTimer,
@@ -83,6 +84,12 @@ let data = null,
     more: false,
     exhausted: false,
   };
+const suggestionFilters = {
+  all: "All",
+  group: "Groups",
+  duplicate: "Repeats",
+  inactive: "Older tabs",
+};
 const navNames = {
   suggestions: "Suggestions",
   tabs: "Open tabs",
@@ -167,7 +174,9 @@ function acceptData(next, erased = false) {
   }
   data = next;
   selection = new Set(
-    [...selection].filter((id) => data.tabs.some((t) => t.id === id)),
+    [...selection].filter((id) =>
+      data.tabs.some((t) => t.id === id && t.reviewable !== false),
+    ),
   );
   updateNavigationCounts();
   publishToolbarActivity();
@@ -192,7 +201,9 @@ async function performRefresh() {
     checkRequest = null;
     acceptData(next);
     selection = new Set(
-      [...selection].filter((id) => data.tabs.some((t) => t.id === id)),
+      [...selection].filter((id) =>
+        data.tabs.some((t) => t.id === id && t.reviewable !== false),
+      ),
     );
     render();
   } catch (error) {
@@ -276,6 +287,7 @@ function expected(tabs) {
   }));
 }
 function timeLabel(tab) {
+  if (tab.reviewable === false) return `${tab.pageType} · Switch only`;
   if (tab.active) return "Active";
   if (tab.audible) return "Playing audio";
   if (tab.pinned) return "Pinned";
@@ -287,15 +299,17 @@ function timeLabel(tab) {
   return days ? `URL last active ${days}d ago` : "URL active today";
 }
 function protectedReason(t) {
-  return t.protected
-    ? "Protected URL"
-    : t.pinned
-      ? "Pinned tab"
-      : t.audible
-        ? "Playing audio"
-        : t.active
-          ? "Active tab"
-          : "";
+  return t.reviewable === false
+    ? "Switch only"
+    : t.protected
+      ? "Protected URL"
+      : t.pinned
+        ? "Pinned tab"
+        : t.audible
+          ? "Playing audio"
+          : t.active
+            ? "Active tab"
+            : "";
 }
 function safeForClose(t) {
   return !protectedReason(t);
@@ -324,7 +338,7 @@ function updateNavigationCounts() {
   if (!data) return;
   $("#tab-count").textContent = data.settings.enabled ? data.tabs.length : "–";
   $("#tab-count").title = data.settings.enabled
-    ? "Web tabs across all regular Chrome windows. Excludes browser pages, extension pages and Incognito."
+    ? "All tabs across regular Chrome windows, including extension, local and browser pages. Incognito is excluded."
     : "Observation paused";
   $("#suggestion-count").textContent = data.suggestions.length;
   $("#saved-count").textContent = data.saved.length;
@@ -357,8 +371,33 @@ function render() {
 function renderWelcome() {
   main.innerHTML = `<div class="welcome"><div class="welcome-illustration" aria-hidden="true"><span class="mini-window"></span><span class="mini-window"></span><span class="mini-window"></span></div><p class="eyebrow">A LITTLE LESS OPEN. A LITTLE MORE HEADSPACE.</p><h1>Your tabs don’t need<br>to be a to-do list.</h1><p class="lede">Make room for what you’re doing now. Tabosmart finds related tabs, spots repeat pages, and gives older work a thoughtful second look.</p><div class="consent"><h2>A little context. Always your call.</h2><p>When you start, Tabosmart observes your open tabs’ titles, URLs and tab activity locally to suggest groups, duplicates and tabs to revisit. It remembers when you use each URL across browser restarts, including URLs you later close. The installation permission also lets Tabosmart review available browser history for frequency and recency. It never reads page content.</p><p>You review every action. Your tab data stays in this Chrome profile. There are no accounts, analytics or cloud AI.</p><label class="consent-ai"><input id="start-ai" type="checkbox" ${data.settings.aiEnabled ? "checked" : ""}><span><strong>Use AI for useful group names</strong><span>Starting may download Chrome’s on-device model. Suggestions work while it prepares. Turn AI off anytime in Settings.</span></span></label><button class="button primary" id="start" data-mutate>Start with my tabs ${icon("arrow")}</button><p class="consent-foot">By starting, you allow this local observation. Pause or erase it in Settings & privacy.</p></div></div>`;
 }
+function suggestionFiltersMarkup() {
+  return `<div class="suggestion-filters" role="tablist" aria-label="Suggestion types">${Object.entries(
+    suggestionFilters,
+  )
+    .map(([type, label]) => {
+      const count =
+        type === "all"
+          ? data.suggestions.length
+          : data.suggestions.filter((s) => s.type === type).length;
+      const selected = suggestionFilter === type;
+      return `<button type="button" role="tab" id="filter-${type}" data-suggestion-filter="${type}" aria-selected="${selected}" aria-controls="suggestion-panel" tabindex="${selected ? "0" : "-1"}">${label}<span>${count}</span></button>`;
+    })
+    .join("")}</div>`;
+}
+function selectSuggestionFilter(type) {
+  if (!Object.hasOwn(suggestionFilters, type)) return;
+  suggestionFilter = type;
+  renderSuggestions();
+  $(`#filter-${type}`).focus({ preventScroll: true });
+  $(".suggestion-filters").scrollIntoView({ block: "nearest" });
+  void runVisibleAI();
+}
 function renderSuggestions() {
   const count = data.suggestions.length;
+  const visible = data.suggestions.filter(
+    (s) => suggestionFilter === "all" || s.type === suggestionFilter,
+  );
   main.innerHTML =
     heading(
       "A little more headspace.",
@@ -368,14 +407,15 @@ function renderSuggestions() {
     (!data.settings.enabled
       ? `<div class="pause-banner">Local observation is paused. <button class="text-button" id="resume">Resume suggestions</button></div>`
       : "") +
-    `${data.installDisclosure ? disclosureMarkup() : ""}${lastDecision ? `<div class="decision-receipt">${icon("check")}<p><strong>Last action</strong><br>${esc(lastDecision)}</p><button class="icon-button" id="dismiss-receipt" aria-label="Dismiss completed action">${icon("close")}</button></div>` : ""}${workspaceCheckMarkup()}<p class="ranking-intro">Recent work, stronger links and manageable reviews come first. Every valid suggestion is shown.</p><div class="section-label"><h2>Worth a quick look</h2><span>${count ? `${count} ${count === 1 ? "suggestion" : "suggestions"} · all shown` : "No rush. No busywork."}</span></div><div class="suggestion-list">${count ? data.suggestions.map((s) => `<article class="suggestion-card"><span class="card-symbol ${esc(s.type)}">${icon(s.type)}</span><div class="card-content"><div class="card-kicker">${{ group: "BRING TOGETHER", duplicate: "LESS REPETITION", inactive: "A FRESH LOOK" }[s.type]}<span class="dot"></span>${s.tabIds.length} ${s.tabIds.length === 1 ? "TAB" : "TABS"}</div><h3 data-group-title="${esc(s.id)}">${esc(aiNameFor(s)?.name || s.title)}</h3><p data-reason="${esc(s.id)}">${esc(reasonFor(s))}</p>${s.rankReason ? `<details class="rank-note"><summary>Why this order?</summary><p>${esc(s.rankReason)}${s.historyReason ? ` ${esc(s.historyReason)}` : ""}</p></details>` : ""}<div class="tab-preview">${s.tabs.slice(0, 4).map(siteTile).join("")}<span class="tab-preview-label"><span data-group-name="${esc(s.id)}">${esc(s.type === "group" ? aiNameFor(s)?.name || s.proposedName || "Suggested group" : [...new Set(s.tabs.map((t) => t.domain))].slice(0, 2).join(", "))}</span><span data-group-provenance="${esc(s.id)}">${aiNameFor(s) ? aiNameBadge() : ""}</span>${s.tabs.length > 4 ? ` + ${s.tabs.length - 4} more` : ""}</span></div></div><div class="card-actions"><button class="button secondary" data-review="${esc(s.id)}">${s.type === "group" ? "Review group" : "Review tabs"} ${icon("arrow")}</button></div><button class="dismiss" data-dismiss="${esc(s.id)}" aria-label="Dismiss ${esc(s.title)}" title="Dismiss this suggestion">${icon("close")}</button></article>`).join("") : `${emptySuggestionsMarkup()}`}</div><p class="gentle-note">${icon("shield")}Pinned, audio-playing and protected tabs stay out of suggestions.</p>`;
+    `${data.installDisclosure ? disclosureMarkup() : ""}${lastDecision ? `<div class="decision-receipt">${icon("check")}<p><strong>Last action</strong><br>${esc(lastDecision)}</p><button class="icon-button" id="dismiss-receipt" aria-label="Dismiss completed action">${icon("close")}</button></div>` : ""}${workspaceCheckMarkup()}<p class="ranking-intro">Recent work, stronger links and manageable reviews come first. Every valid suggestion is shown.</p>${suggestionFiltersMarkup()}<section id="suggestion-panel" role="tabpanel" aria-labelledby="filter-${suggestionFilter}" tabindex="0"><div class="section-label"><h2>Worth a quick look</h2><span>${visible.length} of ${count} suggestions · ${suggestionFilter === "all" ? "all shown" : suggestionFilters[suggestionFilter].toLowerCase()}</span></div><div class="suggestion-list">${visible.length ? visible.map((s) => `<article class="suggestion-card"><span class="card-symbol ${esc(s.type)}">${icon(s.type)}</span><div class="card-content"><div class="card-kicker">${{ group: "BRING TOGETHER", duplicate: "LESS REPETITION", inactive: "A FRESH LOOK" }[s.type]}<span class="dot"></span>${s.tabIds.length} ${s.tabIds.length === 1 ? "TAB" : "TABS"}</div><h3 data-group-title="${esc(s.id)}">${esc(aiNameFor(s)?.name || s.title)}</h3><p data-reason="${esc(s.id)}">${esc(reasonFor(s))}</p>${s.rankReason ? `<details class="rank-note"><summary>Why this order?</summary><p>${esc(s.rankReason)}${s.historyReason ? ` ${esc(s.historyReason)}` : ""}</p></details>` : ""}<div class="tab-preview">${s.tabs.slice(0, 4).map(siteTile).join("")}<span class="tab-preview-label"><span data-group-name="${esc(s.id)}">${esc(s.type === "group" ? aiNameFor(s)?.name || s.proposedName || "Suggested group" : [...new Set(s.tabs.map((t) => t.domain))].slice(0, 2).join(", "))}</span><span data-group-provenance="${esc(s.id)}">${aiNameFor(s) ? aiNameBadge() : ""}</span>${s.tabs.length > 4 ? ` + ${s.tabs.length - 4} more` : ""}</span></div></div><div class="card-actions"><button class="button secondary" data-review="${esc(s.id)}">${s.type === "group" ? "Review group" : "Review tabs"} ${icon("arrow")}</button></div><button class="dismiss" data-dismiss="${esc(s.id)}" aria-label="Dismiss ${esc(s.title)}" title="Dismiss this suggestion">${icon("close")}</button></article>`).join("") : suggestionFilter === "all" ? emptySuggestionsMarkup() : `<div class="empty"><div class="empty-icon">${icon(suggestionFilter)}</div><h2>No ${suggestionFilters[suggestionFilter].toLowerCase()} to review.</h2><p>This filter has no current suggestions.</p><button class="button secondary" data-suggestion-filter="all">Show all suggestions</button></div>`}</div></section><p class="gentle-note">${icon("shield")}Pinned, audio-playing and protected tabs stay out of suggestions.</p>`;
 }
 function tabRow(
   t,
   { check = false, checked = false, guard = false, protection = false } = {},
 ) {
-  const reason = guard ? protectedReason(t) : "";
-  return `<div class="tab-row">${check ? `<input type="checkbox" data-tab-check="${t.id}" aria-label="Select ${esc(t.title)}" ${checked ? "checked" : ""} ${reason ? "disabled" : ""}>` : ""}${siteTile(t)}<div class="tab-text"><button class="tab-title" data-focus="${t.id}" title="${esc(t.title)}">${esc(t.title || t.url)}</button><div class="tab-url" title="${esc(t.url)}">${esc(t.url)}</div></div><span class="row-meta">${t.protected ? icon("shield") : t.pinned ? icon("pin") : t.audible ? icon("volume") : ""}${esc(reason || timeLabel(t))}</span>${protection ? `<button class="icon-button ${t.protected ? "protected" : ""}" data-protect="${t.id}" aria-label="${t.protected ? "Unprotect" : "Protect"} this URL: ${esc(t.title)}" title="${t.protected ? "Unprotect" : "Protect"} this URL">${icon("shield")}</button>` : ""}</div>`;
+  const switchOnly = t.reviewable === false;
+  const reason = switchOnly ? timeLabel(t) : guard ? protectedReason(t) : "";
+  return `<div class="tab-row">${check ? `<input type="checkbox" data-tab-check="${t.id}" aria-label="Select ${esc(t.title)}" ${checked ? "checked" : ""} ${reason ? "disabled" : ""}>` : ""}${siteTile(t)}<div class="tab-text"><button class="tab-title" data-focus="${t.id}" title="${esc(t.title)}">${esc(t.title || t.url)}</button><div class="tab-url" title="${esc(t.url)}">${esc(t.url || "Page URL unavailable")}</div></div><span class="row-meta">${t.protected ? icon("shield") : t.pinned ? icon("pin") : t.audible ? icon("volume") : ""}${esc(reason || timeLabel(t))}</span>${protection && !switchOnly ? `<button class="icon-button ${t.protected ? "protected" : ""}" data-protect="${t.id}" aria-label="${t.protected ? "Unprotect" : "Protect"} this URL: ${esc(t.title)}" title="${t.protected ? "Unprotect" : "Protect"} this URL">${icon("shield")}</button>` : ""}</div>`;
 }
 function renderTabs() {
   const filtered = data.tabs.filter((t) =>
@@ -384,9 +424,9 @@ function renderTabs() {
   main.innerHTML =
     heading(
       "Everything you have open.",
-      "Web tabs across all your regular Chrome windows. Find, protect or save what matters.",
+      "All tabs across your regular Chrome windows. Find a tab and switch straight to it.",
     ) +
-    `<p class="tab-scope">${data.settings.enabled ? `${filtered.length} of ${data.tabs.length} web tabs${new Set(data.tabs.map((t) => t.windowId)).size > 1 ? ` across ${new Set(data.tabs.map((t) => t.windowId)).size} windows` : ""}. Chrome pages, extension pages and Incognito are excluded.` : "Observation is paused. Resume in Settings to see current tabs."}</p><div class="toolbar"><input id="tab-search" class="search" placeholder="Find a title or website…" aria-label="Search open tabs" value="${esc(search)}"><div class="button-group"><span class="selection-note" id="selection-count">${selection.size} selected</span><button class="button secondary" id="review-selected" ${selection.size ? "" : "disabled"}>Review selected ${icon("arrow")}</button></div></div>${filtered.length ? `<div class="tab-list">${filtered.map((t) => tabRow(t, { check: true, checked: selection.has(t.id), protection: true })).join("")}</div>` : `<div class="empty"><div class="empty-icon">${icon("search")}</div><h2>${search ? "No matching tabs." : "A clear workspace."}</h2><p>${search ? "Try a shorter title or a website name." : data.settings.enabled ? "Open a web page and it will appear here. Chrome pages, extension pages and Incognito tabs are not included." : "Local observation is paused. Resume it in settings to see your tabs."}</p></div>`}<p class="gentle-note">${icon("shield")}Protecting a URL keeps all of its open copies out of suggestions. You can unprotect it anytime.</p>`;
+    `<p class="tab-scope">${data.settings.enabled ? `${filtered.length} of ${data.tabs.length} tabs${new Set(data.tabs.map((t) => t.windowId)).size > 1 ? ` across ${new Set(data.tabs.map((t) => t.windowId)).size} windows` : ""}. Includes extension pages, local files, Chrome pages and this workspace. Incognito is excluded.` : "Observation is paused. Resume in Settings to see current tabs."}</p><div class="toolbar"><input id="tab-search" class="search" placeholder="Find a title or URL…" aria-label="Search open tabs" value="${esc(search)}"><div class="button-group"><span class="selection-note" id="selection-count">${selection.size} selected</span><button class="button secondary" id="review-selected" ${selection.size ? "" : "disabled"}>Review selected ${icon("arrow")}</button></div></div>${filtered.length ? `<div class="tab-list">${filtered.map((t) => tabRow(t, { check: true, checked: selection.has(t.id), protection: true })).join("")}</div>` : `<div class="empty"><div class="empty-icon">${icon("search")}</div><h2>${search ? "No matching tabs." : "A clear workspace."}</h2><p>${search ? "Try a shorter title or a website name." : data.settings.enabled ? "Open a tab in a regular Chrome window and it will appear here. Incognito tabs are not included." : "Local observation is paused. Resume it in settings to see your tabs."}</p></div>`}<p class="gentle-note">${icon("shield")}Web pages, including localhost sites, support suggestions, protection, saving and closing. Other pages are switch only: click their title to return to them. Recovery cannot reliably reopen every page type.</p>`;
 }
 function renderCollections(kind) {
   const saved = kind === "saved",
@@ -749,6 +789,8 @@ function viewSignature(value) {
       t.id,
       t.title,
       t.url,
+      t.reviewable,
+      t.pageType,
       t.windowId,
       t.groupId,
       t.pinned,
@@ -771,6 +813,7 @@ function viewSignature(value) {
   });
 }
 function renderPreservingFocus() {
+  const hadFocus = document.hasFocus();
   const focused = document.activeElement;
   const selector = focused?.id
     ? "#" + CSS.escape(focused.id)
@@ -780,12 +823,18 @@ function renderPreservingFocus() {
         ? '[data-review="' + CSS.escape(focused.dataset.review) + '"]'
         : null;
   const caret = focused?.selectionStart;
+  const selectionEnd = focused?.selectionEnd;
+  const selectionDirection = focused?.selectionDirection;
   render();
   const replacement = selector ? document.querySelector(selector) : null;
-  if (replacement) {
+  if (replacement && hadFocus) {
     replacement.focus({ preventScroll: true });
     if (caret != null && replacement.setSelectionRange)
-      replacement.setSelectionRange(caret, caret);
+      replacement.setSelectionRange(
+        caret,
+        selectionEnd ?? caret,
+        selectionDirection,
+      );
   }
 }
 function setCheckStatus(state, text) {
@@ -849,6 +898,11 @@ function workspaceCheckMarkup() {
   const failed = enabled && current.state === "error";
   const done = enabled && summary && summary.checkedAt;
   const count = data.suggestions.length;
+  const openCount = summary?.openTabs ?? data.tabs.length;
+  const switchOnlyCount = summary?.switchOnlyTabs ?? 0;
+  const checkedLabel = switchOnlyCount
+    ? `${openCount} ${openCount === 1 ? "tab" : "tabs"} open. ${summary.webTabsChecked} web ${summary.webTabsChecked === 1 ? "tab" : "tabs"} checked.`
+    : `${summary?.webTabsChecked ?? 0} ${summary?.webTabsChecked === 1 ? "tab" : "tabs"} checked.`;
   const title = !enabled
     ? "A pause, whenever you need it."
     : failed
@@ -858,9 +912,9 @@ function workspaceCheckMarkup() {
           ? "A fresh check is next."
           : "Checking your open tabs…"
         : done
-          ? `${summary.webTabsChecked} ${summary.webTabsChecked === 1 ? "tab" : "tabs"} checked. ${count ? "Your choices, in a useful order." : "No new suggestions."}`
+          ? `${checkedLabel} ${count ? "Your choices, in a useful order." : "No new suggestions."}`
           : "Ready for a fresh look.";
-  const detail = !enabled
+  let detail = !enabled
     ? "Resume when you want a fresh look. Your saved URLs are still here."
     : failed
       ? "Your last results stay available. Try another check when you’re ready."
@@ -871,6 +925,8 @@ function workspaceCheckMarkup() {
             ? `${count} ${count === 1 ? "suggestion" : "suggestions"} to consider. Start with one; the rest can wait.`
             : "Related tabs, repeat URLs and recorded activity have been checked."
           : "Check your open web tabs for related work, repeat URLs and activity worth revisiting.";
+  if (done && !checking && !failed && switchOnlyCount)
+    detail += ` ${switchOnlyCount} ${switchOnlyCount === 1 ? "tab is" : "tabs are"} switch only. Find extension, local and browser pages in Open tabs.`;
   const groups = data.suggestions.filter((s) => s.type === "group").length;
   const duplicates = data.suggestions
     .filter((s) => s.type === "duplicate")
@@ -891,7 +947,7 @@ function workspaceCheckMarkup() {
           ["downloading", "preparing"].includes(capabilities.names.state)
         ? "AI is preparing on this device. Tab checks and suggestions keep working."
         : "";
-  return `<section class="workspace-check ${checking ? "is-checking" : failed ? "is-error" : ""}" id="workspace-check" aria-label="Tab check summary"><div class="check-main"><span class="check-symbol" aria-hidden="true">${icon(checking ? "refresh" : failed ? "info" : !enabled ? "leaf" : "check")}</span><div class="check-copy"><p class="check-eyebrow">${!enabled ? "YOUR WORKSPACE, YOUR PACE" : checking ? "A FRESH LOOK AT YOUR TABS" : failed ? "LET’S TRY THAT AGAIN" : "A LITTLE LESS TO HOLD IN YOUR HEAD"}</p><h2 class="check-title" aria-live="polite">${esc(title)}</h2><p>${esc(detail)}</p></div>${enabled ? `<button class="text-button" id="check-again" ${checking ? "disabled" : ""}>${failed ? "Try again" : "Check again"}${icon("refresh")}</button>` : ""}</div>${done ? `<div class="check-results"><span>${icon("group")}<b>${groups}</b> ${groups === 1 ? "group idea" : "group ideas"}</span><span>${icon("duplicate")}<b>${duplicates}</b> ${duplicates === 1 ? "repeat copy" : "repeat copies"} to review</span><span>${icon("inactive")}<b>${older}</b> ${older === 1 ? "older tab" : "older tabs"} to revisit</span><span class="check-recency" title="${esc(new Date(summary.checkedAt).toLocaleString())}">${checking || failed ? `Last completed check: ${summary.webTabsChecked} tabs` : checkRecency(summary.checkedAt)}</span></div>` : ""}${historyStatusMarkup()}${data.schedulingWarning ? `<p class="check-ai-note" role="status">${esc(data.schedulingWarning)}</p>` : ""}${enabled && data.settings.aiEnabled && !discoveryActivity.running && (discoveryActivity.inspected || getDiscoveryOutcome()?.state === "failed") ? `<p class="check-ai-note">${getDiscoveryOutcome()?.state === "failed" ? esc(getDiscoveryOutcome().detail) : `Local AI reviewed ${discoveryActivity.inspected} tab titles. Suggestions can miss connections.${discoveryActivity.more ? " More tabs will be reviewed automatically." : " Review whether each suggestion fits your work."}`}${discoveryActivity.more && discoveryActivity.cooling ? ' <button class="text-button" id="more-topics">Continue now</button>' : ""}</p>` : ""}${aiLine ? `<p class="check-ai-note">${icon("spark")}${esc(aiLine)}</p>` : ""}</section>`;
+  return `<section class="workspace-check ${checking ? "is-checking" : failed ? "is-error" : ""}" id="workspace-check" aria-label="Tab check summary"><div class="check-main"><span class="check-symbol" aria-hidden="true">${icon(checking ? "refresh" : failed ? "info" : !enabled ? "leaf" : "check")}</span><div class="check-copy"><p class="check-eyebrow">${!enabled ? "YOUR WORKSPACE, YOUR PACE" : checking ? "A FRESH LOOK AT YOUR TABS" : failed ? "LET’S TRY THAT AGAIN" : "A LITTLE LESS TO HOLD IN YOUR HEAD"}</p><h2 class="check-title" aria-live="polite">${esc(title)}</h2><p>${esc(detail)}</p></div>${enabled ? `<button class="text-button" id="check-again" ${checking ? "disabled" : ""}>${failed ? "Try again" : "Check again"}${icon("refresh")}</button>` : ""}</div>${done ? `<div class="check-results"><button type="button" class="check-filter" data-suggestion-filter="group" aria-pressed="${suggestionFilter === "group"}" aria-controls="suggestion-panel">${icon("group")}<b>${groups}</b> ${groups === 1 ? "group idea" : "group ideas"}</button><button type="button" class="check-filter" data-suggestion-filter="duplicate" aria-pressed="${suggestionFilter === "duplicate"}" aria-controls="suggestion-panel">${icon("duplicate")}<b>${duplicates}</b> ${duplicates === 1 ? "repeat copy" : "repeat copies"} to review</button><button type="button" class="check-filter" data-suggestion-filter="inactive" aria-pressed="${suggestionFilter === "inactive"}" aria-controls="suggestion-panel">${icon("inactive")}<b>${older}</b> ${older === 1 ? "older tab" : "older tabs"} to revisit</button><span class="check-recency" title="${esc(new Date(summary.checkedAt).toLocaleString())}">${checking || failed ? `Last completed check: ${summary.webTabsChecked} web tabs` : checkRecency(summary.checkedAt)}</span></div>` : ""}${historyStatusMarkup()}${data.schedulingWarning ? `<p class="check-ai-note" role="status">${esc(data.schedulingWarning)}</p>` : ""}${enabled && data.settings.aiEnabled && !discoveryActivity.running && (discoveryActivity.inspected || getDiscoveryOutcome()?.state === "failed") ? `<p class="check-ai-note">${getDiscoveryOutcome()?.state === "failed" ? esc(getDiscoveryOutcome().detail) : `Local AI reviewed ${discoveryActivity.inspected} tab titles. Suggestions can miss connections.${discoveryActivity.more ? " More tabs will be reviewed automatically." : " Review whether each suggestion fits your work."}`}${discoveryActivity.more && discoveryActivity.cooling ? ' <button class="text-button" id="more-topics">Continue now</button>' : ""}</p>` : ""}${aiLine ? `<p class="check-ai-note">${icon("spark")}${esc(aiLine)}</p>` : ""}</section>`;
 }
 function updateWorkspaceCheck() {
   const panel = $("#workspace-check");
@@ -918,9 +974,11 @@ function emptySuggestionsMarkup() {
     detail =
       "Your first completed check will show what was considered. No tabs will move or close without your say.";
   } else if (!summary.webTabsChecked) {
-    title = "A clear starting point.";
+    title = data.tabs.length
+      ? "Your tabs are in Open tabs."
+      : "A clear starting point.";
     detail =
-      "Open a few web pages and they’ll appear here. Chrome pages, extension pages and Incognito tabs stay out of this workspace.";
+      "Suggestions cover web pages, including localhost sites. Extension pages, local files and browser pages are listed in Open tabs, where you can switch to them. Incognito stays excluded.";
   } else if (summary.dismissedCandidates > 0) {
     title = "No new decisions to make.";
     detail =
@@ -1156,6 +1214,10 @@ document.addEventListener("click", async (event) => {
   if (d.closeDialog !== undefined) {
     dialog.close();
     review = null;
+    return;
+  }
+  if (d.suggestionFilter) {
+    selectSuggestionFilter(d.suggestionFilter);
     return;
   }
   if (d.view) {
@@ -1608,3 +1670,21 @@ async function bootstrap() {
   await refreshAI();
 }
 void bootstrap();
+
+// Follow the standard horizontal tablist keyboard interaction.
+document.addEventListener("keydown", (event) => {
+  const tab = event.target.closest('[role="tab"][data-suggestion-filter]');
+  if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+    return;
+  event.preventDefault();
+  const types = Object.keys(suggestionFilters);
+  const index = types.indexOf(tab.dataset.suggestionFilter);
+  const next =
+    event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? types.length - 1
+        : (index + (event.key === "ArrowRight" ? 1 : -1) + types.length) %
+          types.length;
+  selectSuggestionFilter(types[next]);
+});
