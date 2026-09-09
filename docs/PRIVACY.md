@@ -2,7 +2,7 @@
 
 **Effective date: 9 September 2026. Extension version: 0.3.0.**
 
-Publisher: Saulius Petreikis. Privacy contact: saulius.developer@gmail.com. This policy covers the Tabosmart extension, its website and voluntary feedback links.
+Publisher: Saulius. Privacy contact: saulius.developer@gmail.com. This policy covers the Tabosmart extension, its website and voluntary feedback links.
 
 Tabosmart reviews open tabs and available browsing history to suggest ways to organize tabs. Processing and records stay in your browser profile. There is no Tabosmart account, analytics service, advertising service or cloud-AI fallback.
 
@@ -80,7 +80,7 @@ Tabosmart complies with the Chrome Web Store User Data Policy, including its Lim
 
 Tabosmart uses handled information only for the tab-management features described here, with no unrelated data sale, advertising or creditworthiness use. The extension uses browsing information only to provide and improve the tab-management features described here. It does not transfer browsing records to the publisher or third parties.
 
-**Publisher and privacy contact:** Saulius Petreikis, saulius.developer@gmail.com.
+**Publisher and privacy contact:** Saulius, saulius.developer@gmail.com.
 
 ## Website and voluntary feedback
 
